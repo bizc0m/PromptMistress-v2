@@ -93,3 +93,14 @@ body.embedded #view-settings-open{display:none}
 .vault-badge.project[data-project-color="yellow"]{color:#eed47b;background:#2d2612;border-color:#7c6122}
 .vault-badge.project[data-project-color="pink"]{color:#ec9bbb;background:#311825;border-color:#74364f}
 .project-color-setting select{min-width:220px}
+.row-actions{white-space:nowrap;width:auto;opacity:0;padding:0 4px;transition:opacity .15s}
+tr.item:hover .row-actions{opacity:1}
+.row-action{border:0;background:transparent;padding:4px 6px;cursor:pointer;font-size:14px;opacity:.7}
+.row-action:hover{opacity:1}
+.favorite-tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.favorite-tag{padding:4px 10px;border-radius:12px;border:1px solid var(--line);background:color-mix(in srgb,var(--tag-color,#409cff) 18%,transparent);color:var(--tag-color,#409cff);font-size:12px;cursor:pointer}
+.favorite-tag:hover{background:color-mix(in srgb,var(--tag-color,#409cff) 28%,transparent)}
+.favorite-tag-row{display:flex;gap:8px;align-items:center;margin:6px 0}
+.favorite-tag-row input[type=color]{width:36px;height:28px;padding:0;border:0;background:none}
+.favorite-tag-row input[type=text]{flex:1;min-width:120px}
+.favorite-tag-row button{border:0;background:transparent;color:var(--red);font-size:16px;cursor:pointer}

@@ -1,4 +1,10 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Importer · PromptMistress</title><link rel="stylesheet" href="/styles/nyx.css"><style>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Importer · PromptMistress</title><link rel="stylesheet" href="/styles/nyx.css"><!--
+v0.2 2026-09-14 STABLE-INTERNE
+DEMANDE: Ajouter une recherche full-text dans l'onglet Importer (titres + contenu des conversations reçues).
+SORTIE: Checkbox "Contenu" et filtrage sur le texte brut des conversations reçues.
+PREUVE: Test visuel dans /capture avec un export JSON.
+Fichier precedent: capture.html (v0.1 initiale)
+--><style>
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 -apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;height:100dvh;display:flex;flex-direction:column}
 header{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
@@ -76,8 +82,9 @@ main{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:18
  <div id="rows"></div>
  <div id="errors" aria-live="polite"></div>
  <div class="actions">
-  <input id="search" type="search" placeholder="Filtrer les titres" aria-label="Rechercher un titre" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)">
-  <button id="all">Tout sélectionner</button>
+   <input id="search" type="search" placeholder="Filtrer les titres ou le contenu" aria-label="Rechercher un titre ou du contenu" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)">
+   <label><input id="search-content" type="checkbox"> Contenu</label>
+   <button id="all">Tout sélectionner</button>
   <button id="none">Tout vider</button>
   <label><input id="capture-plus" type="checkbox"> Version + (pièces jointes)</label>
   <button id="capture" class="primary">Capturer + importer</button>

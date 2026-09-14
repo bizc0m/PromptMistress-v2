@@ -1,3 +1,10 @@
+/*
+v0.2 2026-09-14 STABLE-INTERNE
+DEMANDE: Ajouter indicateur visuel de tri actif sur les headers de colonnes, recherche full-text dans Importer (via capture-ui.js) et glisser-deposer sur dossiers.
+SORTIE: Headers de colonnes reflectent le tri actif (asc/desc). Support drag & drop des lignes sur les dossiers de l'explorateur.
+PREUVE: Test visuel dans /workspace apres redemarrage du serveur.
+Fichier precedent: workspace-ui.js (v0.1 initiale)
+*/
 import {columns,loadView,saveView,applyViewOptions,mountViewSettings,viewKey,unreadPrompts} from './workspace-view.mjs';
 import {exportContent,readerBlocks,corpusEntry,corpusFiles} from './message-content.mjs';
 import {zipFiles} from './zip.mjs';
@@ -68,7 +75,11 @@ function render(){
  for(const [id,label] of columns){
   const th=document.createElement('th');th.scope='col';th.dataset.column=id;th.hidden=!view.columns[id];
   const button=document.createElement('button');button.textContent=label.toUpperCase();const sorting={date:'date',llm:'provider',title:'title',project:'project'}[id];
-  if(sorting){button.onclick=()=>{$('sort').value=sorting;render();};th.append(button);}else th.append(document.createTextNode(label.toUpperCase()));
+   if(sorting){button.onclick=()=>{$('sort').value=sorting;render();};th.append(button);
+    const activeSort=$('sort').value;
+    const isActive=(activeSort===sorting)||(sorting==='title'&&['title','title-desc'].includes(activeSort))||(sorting==='date'&&['date','oldest'].includes(activeSort));
+    if(isActive){th.classList.add('sort-active');const isDesc=activeSort.endsWith('-desc')||activeSort==='date';th.classList.add(isDesc?'sort-desc':'sort-asc');button.setAttribute('aria-sort',isDesc?'descending':'ascending');}
+   }else th.append(document.createTextNode(label.toUpperCase()));
   if(view.columns[id]){
    const col=document.createElement('col');col.style.width=view.widths[id]+'px';colgroup.append(col);tableWidth+=view.widths[id];
    const grip=document.createElement('span');grip.className='column-grip';grip.tabIndex=0;grip.setAttribute('role','separator');grip.setAttribute('aria-orientation','vertical');grip.setAttribute('aria-label','Redimensionner '+label);grip.setAttribute('aria-valuemin','60');grip.setAttribute('aria-valuemax','900');grip.setAttribute('aria-valuenow',view.widths[id]);
@@ -80,7 +91,8 @@ function render(){
  table.style.width=tableWidth+'px';head.append(header);table.append(head);
  const tbody=document.createElement('tbody');table.append(tbody);
  for(const r of visible.slice(0,limit)){
-  const a=annotation(r),item=document.createElement('tr');item.className='item'+(r.key===active?.key?' active':'');item.dataset.color=a.color||'';item.oncontextmenu=e=>{e.preventDefault();choose(r);openReaderMenu(e,true);};
+   const a=annotation(r),item=document.createElement('tr');item.className='item'+(r.key===active?.key?' active':'');item.dataset.color=a.color||'';item.draggable=true;item.ondragstart=e=>{e.dataTransfer.setData('text/plain',r.key);e.dataTransfer.effectAllowed='move';};
+   item.oncontextmenu=e=>{e.preventDefault();choose(r);openReaderMenu(e,true);};
   let cellIndex=-1;const cell=()=>{const td=document.createElement('td');if(cellIndex>=0){td.dataset.column=columns[cellIndex][0];td.hidden=!view.columns[columns[cellIndex][0]];}cellIndex++;item.append(td);return td;};
   const check=document.createElement('input');check.type='checkbox';check.checked=selected.has(r.key);check.setAttribute('aria-label','Sélectionner '+r.title);check.onchange=()=>{check.checked?selected.add(r.key):selected.delete(r.key);selectionCount();};cell().append(check);
   const date=cell();date.className='date-cell';const d=new Date(r.updated);
@@ -201,6 +213,28 @@ $('annotation').addEventListener('input',()=>{dirty=true;retainDraft();$('annota
 window.addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent||e.data?.pm!=='refresh-annotations'||!rows.length)return;facetsDirty=true;searchRevision++;render();if(active&&!dirty)fillAnnotation();});
 
 
+function setupFolderDrop(element,path){
+ element.ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='move';element.classList.add('drag-over');};
+ element.ondragleave=()=>element.classList.remove('drag-over');
+ element.ondrop=e=>{
+  e.preventDefault();element.classList.remove('drag-over');
+  const key=e.dataTransfer.getData('text/plain');
+  const dragged=key?rows.find(r=>r.key===key):null;
+  const targets=dragged?(selected.size?rows.filter(r=>selected.has(r.key)):[dragged]):[];
+  if(!targets.length){notify('Aucun élément à déposer.');return;}
+  if(dirty&&targets.some(r=>r.key===active?.key)){notify('Enregistre la fiche en cours avant ce classement.');return;}
+  if(!saved){notify('Stockage indisponible.');return;}
+  const next={...saved};
+  for(const r of targets){
+   const folders=[...(annotation(r).folders||[])];
+   if(!folders.includes(path))folders.push(path);
+   folders.sort();
+   next[r.key]={...(saved[r.key]||{}),folders,_manual:[...new Set([...(saved[r.key]?._manual||[]),'folders'])]};
+  }
+  localStorage.setItem(storageKey,JSON.stringify(next));saved=next;facetsDirty=true;searchRevision++;
+  render();if(active)fillAnnotation();notify(targets.length+' élément(s) déposé(s) dans '+path+'.');
+ };
+}
 function renderExplorer(){
  const sourceNav=$('source-nav');sourceNav.replaceChildren();
  for(const provider of [...new Set(rows.map(r=>r.provider).filter(Boolean))].sort()){const button=document.createElement('button');button.className='rail-item';button.dataset.sourceView=provider;button.dataset.provider=provider;const name=document.createElement('span');name.textContent=provider;const count=document.createElement('span');count.textContent=rows.filter(r=>r.provider===provider).length;button.append(name,count);button.onclick=()=>{$('provider').value=$('provider').value===provider?'':provider;render();};button.setAttribute('aria-pressed',String($('provider').value===provider));sourceNav.append(button);}
@@ -211,8 +245,8 @@ function renderExplorer(){
  $('project-filter').value=project;
  $('folder-tree').replaceChildren();
  function branch(nodes,container){for(const node of [...nodes.values()].sort((a,b)=>a.name.localeCompare(b.name))){
-  const button=document.createElement('button');button.textContent=node.name;button.className='facet';button.dataset.folder=node.path;button.setAttribute('aria-pressed',String(explorerFolder===node.path));button.onclick=()=>{explorerFolder=explorerFolder===node.path?'':node.path;limit=100;render();};
-  if(node.children.size){const fold=document.createElement('details'),summary=document.createElement('summary');fold.open=expandedFolders.has(node.path);summary.append(button);button.onclick=e=>{e.preventDefault();explorerFolder=explorerFolder===node.path?'':node.path;expandedFolders.add(node.path);fold.open=true;limit=100;render();};fold.append(summary);fold.ontoggle=()=>{fold.open?expandedFolders.add(node.path):expandedFolders.delete(node.path);};branch(node.children,fold);container.append(fold);}else container.append(button);
+   const button=document.createElement('button');button.textContent=node.name;button.className='facet';button.dataset.folder=node.path;button.setAttribute('aria-pressed',String(explorerFolder===node.path));button.onclick=()=>{explorerFolder=explorerFolder===node.path?'':node.path;limit=100;render();};setupFolderDrop(button,node.path);
+   if(node.children.size){const fold=document.createElement('details'),summary=document.createElement('summary');fold.open=expandedFolders.has(node.path);summary.append(button);button.onclick=e=>{e.preventDefault();explorerFolder=explorerFolder===node.path?'':node.path;expandedFolders.add(node.path);fold.open=true;limit=100;render();};setupFolderDrop(fold,node.path);fold.append(summary);fold.ontoggle=()=>{fold.open?expandedFolders.add(node.path):expandedFolders.delete(node.path);};branch(node.children,fold);container.append(fold);}else container.append(button);
  }}branch(folderTree(items),$('folder-tree'));
  for(const [prefix,id] of [['#','theme-list'],['@','mention-list']]){
   $(id).replaceChildren();for(const tag of [...new Set(items.flatMap(a=>a.tags||[]).filter(t=>t.startsWith(prefix)))].sort()){

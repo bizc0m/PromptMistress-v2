@@ -1,0 +1,28 @@
+@import url("/styles/nyx.css");
+/* Keep the inherited inspector visible beside the conversation list. */
+:root{--inspector-width:clamp(280px,28vw,370px)}
+.tools:focus-within button,.tools:hover button{display:inline-flex!important}
+body .layout{grid-template-columns:0 minmax(0,1fr) var(--inspector-width)!important}
+body:not(.rail-collapsed) .layout{grid-template-columns:218px minmax(0,1fr) var(--inspector-width)!important}
+body .table-wrap{grid-column:2;min-width:0}
+body .panel{display:block;grid-column:3;position:relative;top:auto;height:100%;min-width:0}
+body .floating-sort{right:calc(var(--inspector-width) + 12px)!important}
+@media(max-width:1080px){
+ body .layout,body:not(.rail-collapsed) .layout{grid-template-columns:0 minmax(0,1fr) var(--inspector-width)!important}
+ body .rail{display:none!important}
+ body .floating-sort{left:8px!important}
+}
+@media(max-width:700px){
+ body .layout,body:not(.rail-collapsed) .layout{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(240px,1fr) minmax(220px,40%);overflow:auto}
+ body .table-wrap,body .panel{grid-column:1}
+ body .panel{border-top:1px solid var(--line)}
+ body .floating-sort{right:8px!important}
+}
+
+/* Keep the Exporter geometry while adopting Vault typography and controls. */
+body header{padding:0!important}body .top h1{font-size:13px!important}
+body .layout{gap:1px}body .panel{padding:10px}
+body .title-line a{color:var(--ink)!important;font-weight:600}
+body .floating-sort{background:var(--surface)}
+body button.active{color:var(--link);border-color:var(--accent);background:var(--raised);font-weight:650}
+body th{background:var(--head);color:var(--muted);font-size:10.5px}

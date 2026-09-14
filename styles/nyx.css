@@ -1,0 +1,27 @@
+:root{color-scheme:dark;--paper:#07070b;--ink:#f2f2f5;--muted:#92949c;--line:#30323d;--accent:#409cff;--surface:#101017;--raised:#171820;--selected:#17283e}body{background:var(--paper)!important;color:var(--ink)!important;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif!important;font-size:13px!important}header{background:var(--surface);padding:10px 16px!important;gap:12px!important}.logo{font:600 14px system-ui!important;letter-spacing:0!important}.mark{color:var(--accent)!important;background:var(--raised)!important;border:1px solid var(--line)}nav{padding:5px 12px!important;gap:4px!important;background:var(--surface)}nav button{padding:7px 12px!important;font-size:12px}nav button[aria-selected=true]{background:var(--raised)!important;color:var(--ink)!important;border-color:var(--line)!important;box-shadow:inset 0 -2px var(--accent)}.toolbar{padding:6px 16px!important;background:var(--surface);gap:10px!important;min-height:38px!important}input,select,textarea,button{color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:5px;font:inherit;padding:7px}input[type=checkbox]{accent-color:var(--accent)}button{cursor:pointer}button:hover:not(:disabled){background:#1f1f2a}button:disabled{opacity:.45;cursor:default}.toolbar select{color:var(--ink)!important;background:var(--raised)!important}.toolbar a,a{color:var(--accent)!important}main,.detail{background:var(--surface)!important}.detail{border-color:var(--line)!important}h1,h2{font-family:system-ui!important;letter-spacing:0!important}h1{font-size:22px!important}.empty p,.notice,small,.provenance{color:var(--muted)!important}#list button.active,#list button:hover{background:var(--selected)!important}#list button,header,#list,.row{border-color:var(--line)!important}#stats{color:#64d2ff!important}#errors,.error{color:#ff9f0a!important}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}footer{background:var(--surface)}.primary{background:#0a66c2;color:white}pre{white-space:pre-wrap;overflow-wrap:anywhere}.muted{color:var(--muted)}[hidden]{display:none!important}
+
+/* Shared presentation, matched to Prompt Vault's existing controls and surfaces. */
+:root{--bg:var(--paper);--panel:var(--surface);--field:var(--raised);--soft:var(--raised);--head:#14151d;--dim:#5c5f6b;--link:#64d2ff;--mark:#64d2ff;--bone-1:#c4c5ca;--focus:rgba(64,156,255,.34)}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif!important}
+button,.file-btn{min-height:30px;padding:6px 10px;border-radius:6px;color:var(--bone-1);font-weight:500;transition:background .18s ease,border-color .18s ease}
+input:not([type=checkbox]):not([type=radio]),select,textarea{min-height:30px;border-radius:6px;background:var(--raised);border-color:var(--line);padding:6px 9px}
+input::placeholder,textarea::placeholder{color:var(--dim)}
+button:hover:not(:disabled),.file-btn:hover{background:#20222c;border-color:#465063}
+a{text-decoration:none;color:var(--link)!important}a:hover{text-decoration:underline}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;box-shadow:0 0 0 3px var(--focus)}
+nav button[aria-selected=true],.panel-tabs button.active,.tabbar button.active{background:var(--raised)!important;border-color:var(--line)!important;color:var(--ink)!important;font-weight:650;box-shadow:inset 0 -2px var(--accent)}
+h1{font-size:18px!important;font-weight:650;line-height:1.25}h2{font-size:16px;font-weight:650}
+.filters{padding:10px;gap:8px;background:var(--surface);border-bottom:1px solid var(--line)}
+#list button{padding:10px 12px;min-height:48px;font-size:12.5px;color:var(--ink)}
+#list button.active{box-shadow:inset 2px 0 var(--accent)}
+small,.count,#stats{font-variant-numeric:tabular-nums}small{color:var(--muted);line-height:1.5}
+.detail{padding:16px;background:var(--surface)}
+pre{font:12px/1.6 ui-monospace,"SF Mono",Menlo,monospace;color:var(--bone-1)}
+#prompt-content{margin-top:12px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+#prompt-content summary{padding:9px 10px;cursor:pointer;color:var(--bone-1);font-weight:500}
+#prompt-content[open] summary{border-bottom:1px solid var(--line)}
+#prompt-content pre{margin:0;padding:12px}
+.entry{border-color:var(--line)!important}.entry:hover{background:#1a1d27}.entry button{color:var(--ink)}
+@media(prefers-reduced-motion:reduce){button,.file-btn,input,select{transition:none}}
+.panes>.pane{min-height:0}.panes .list{min-height:0}.actions{background:var(--surface)}
+.panes>.pane{overflow:hidden}

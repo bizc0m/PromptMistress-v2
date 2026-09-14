@@ -1,0 +1,17 @@
+{
+  "name": "chatvault",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local Markdown-first Prompt Vault V0.",
+  "bin": {
+    "pv": "./pv.js"
+  },
+  "scripts": {
+    "app": "scripts/build-macos-app.sh",
+    "test": "node --test test/*.test.js",
+    "pv": "node pv.js"
+  },
+  "engines": {
+    "node": ">=26"
+  }
+}

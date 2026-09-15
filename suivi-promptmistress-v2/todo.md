@@ -28,3 +28,6 @@
 - [x] Création du `.dmg` et `.zip`
 - [x] Documentation d'installation
 - [x] Pousser V2 sur GitHub remote
+- [x] Workflow GitHub Actions
+- [x] Script signature + notarisation Apple
+- [x] Test unitaire de l'extension

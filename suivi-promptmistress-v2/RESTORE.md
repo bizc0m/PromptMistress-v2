@@ -21,10 +21,11 @@ curl -s http://127.0.0.1:18431/health
 - Node + Python embarqués dans le bundle.
 - Extension navigateur dans `browser-extension/`.
 - Build script : `scripts/build.sh`.
-- Tests : `scripts/verify.mjs`.
+- Tests : `npm test` (`scripts/verify.mjs` + `scripts/test-extension.mjs`).
 - Distribution : `dist/PromptMistress-0.2.0-macOS.zip` + `.dmg`.
+- CI : `.github/workflows/build.yml`.
+- Signature : `scripts/sign-and-notarize.sh`.
 
 ## Prochaine action
-1. Pousser les commits sur GitHub.
-2. Tester l'extension dans Chrome/Firefox sur ChatGPT/Perplexity.
-3. Signer avec un vrai certificat développeur Apple si disponible.
+1. Tester l'extension dans Chrome/Firefox sur ChatGPT/Perplexity.
+2. Signer avec un vrai certificat développeur Apple si disponible.

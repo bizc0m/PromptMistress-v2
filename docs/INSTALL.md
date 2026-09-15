@@ -52,6 +52,26 @@ PROMPTMISTRESS_SIGN_IDENTITY="Developer ID Application: Mon Nom" \
   ./scripts/build.sh 0.2.0
 ```
 
+### Signature + notarisation complète
+
+```bash
+./scripts/build.sh 0.2.0
+SIGN_IDENTITY="Developer ID Application: Mon Nom (TEAM_ID)" \
+  AC_API_KEY_ID="xxx" \
+  AC_API_KEY_ISSUER_ID="xxx" \
+  AC_API_KEY_PATH="/chemin/AuthKey_xxx.p8" \
+  ./scripts/sign-and-notarize.sh
+```
+
+## CI / GitHub Actions
+
+Le workflow `.github/workflows/build.yml` build et teste l'app sur chaque push/PR.
+Les artefacts `.zip` et `.dmg` sont publiés.
+
+Pour publier une release signée, configurez les secrets GitHub :
+- `SIGN_IDENTITY`
+- `AC_API_KEY_ID`, `AC_API_KEY_ISSUER_ID`, `AC_API_KEY_PATH` (contenu du .p8)
+
 ## Lancement en mode développement (sans build app)
 
 ```bash

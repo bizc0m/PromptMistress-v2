@@ -18,3 +18,15 @@
 - Tests : `npm test` → PASS.
 - Build validé : app installée, `/health` ready:true.
 - Reste : push GitHub, test navigateur réel, certificat développeur officiel.
+
+## 2026-09-15 — Suite : CI + signature + test extension
+- Demande : continue.
+- Actions réalisées :
+  - Création du workflow GitHub Actions `.github/workflows/build.yml` (build macOS, tests, artefacts).
+  - Création de `scripts/sign-and-notarize.sh` + `native/entitlements.plist`.
+  - Création de `scripts/test-extension.mjs` : test unitaire du manifest/content/popup.
+  - Ajout de `puppeteer-core` et `jsdom` en devDependencies.
+  - Mise à jour de `docs/INSTALL.md`, `package.json`, `.gitignore`.
+  - Mise à jour des fichiers de suivi.
+- Tests : `npm test` + `npm run test:extension` → PASS.
+- Reste : validation dans Chrome/Firefox réel, certificat Apple.

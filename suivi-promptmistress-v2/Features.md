@@ -12,6 +12,8 @@
 - F009 — Extension navigateur Chrome/Firefox pour remplacer le bookmarklet. `browser-extension/`.
 - F010 — Script de build automatisé reproduisant l'app + `.dmg` + `.zip`. `scripts/build.sh`.
 - F011 — Tests de non-régression. `scripts/verify.mjs`.
+- F012 — Workflow GitHub Actions build/test/artifacts. `.github/workflows/build.yml`.
+- F013 — Script de signature + notarisation développeur Apple. `scripts/sign-and-notarize.sh`.
 
 ## Format
 `- = YYYY-MM-DD | Nom | statut | chemin`
@@ -52,5 +54,18 @@
 ### F011 — Tests de non-régression
 - Date : 2026-09-15
 - Statut : validé
-- Fichiers : `scripts/verify.mjs`
+- Fichiers : `scripts/verify.mjs`, `scripts/test-extension.mjs`
 - Fonctionnement : vérifie serveur, app bundle, distribution, bookmarklets, extension.
+
+### F012 — CI GitHub Actions
+- Date : 2026-09-15
+- Statut : validé
+- Fichiers : `.github/workflows/build.yml`
+- Fonctionnement : build sur runner macOS, tests, upload des artefacts `.zip`/`.dmg`.
+- Combos : avec F010 pour des builds reproductibles ; avec F013 pour des releases signées.
+
+### F013 — Signature / notarisation Apple
+- Date : 2026-09-15
+- Statut : validé (script prêt, nécessite certificat)
+- Fichiers : `scripts/sign-and-notarize.sh`, `native/entitlements.plist`
+- Fonctionnement : `codesign --options runtime` puis `xcrun notarytool submit` + `stapler staple`.

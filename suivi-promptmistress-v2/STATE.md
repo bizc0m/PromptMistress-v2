@@ -14,13 +14,14 @@
 - Python embarqué via distribution standalone installée par `uv` (3.13).
 - Extension navigateur créée dans `browser-extension/`.
 - Script de build automatisé `scripts/build.sh` générant `.app`, `.zip`, `.dmg`.
-- Tests de non-régression dans `scripts/verify.mjs`.
+- Tests de non-régression dans `scripts/verify.mjs` + test unitaire extension.
+- Workflow GitHub Actions `.github/workflows/build.yml`.
+- Script signature/notarisation `scripts/sign-and-notarize.sh`.
 - Documentation dans `docs/INSTALL.md`.
 
 ## Reste à faire
-1. Pousser les commits sur GitHub.
-2. Valider l'extension dans un navigateur réel (ChatGPT/Perplexity).
-3. Obtenir un certificat développeur Apple pour une signature officielle.
+1. Valider l'extension dans un navigateur réel (ChatGPT/Perplexity).
+2. Obtenir un certificat développeur Apple pour une signature/notarisation officielle.
 
 ## Version
 - Courante : 0.2.0

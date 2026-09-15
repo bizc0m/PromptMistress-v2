@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PromptMistress Capturer</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header>
+  <span class="logo">PM</span>
+  <div>
+    <h1>PromptMistress Capturer</h1>
+    <p class="muted">Capture ChatGPT &amp; Perplexity</p>
+  </div>
+</header>
+<main>
+  <button id="open-pm" class="primary">Ouvrir PromptMistress</button>
+  <button id="start-capture">Capturer cet onglet</button>
+  <p id="status" class="status">Prêt</p>
+  <hr>
+  <p class="help">Sur ChatGPT ou Perplexity, cliquez sur le bouton <strong>PM</strong> flottant en bas à droite pour capturer.</p>
+  <p class="help">L'extension suppose que l'app PromptMistress tourne sur <a href="http://127.0.0.1:18431/" target="_blank">127.0.0.1:18431</a>.</p>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>

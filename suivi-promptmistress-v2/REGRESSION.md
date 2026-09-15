@@ -4,7 +4,7 @@
 - Description : L'app doit démarrer, lancer Node, puis afficher l'interface locale.
 - Fichiers concernés : binaire Swift, `scripts/server.mjs`, `Runtime.plist`.
 - Test : `open ~/.promptmistress-v2/PromptMistress.app && sleep 3 && curl -s http://127.0.0.1:18431/health`.
-- Validé le : 2026-09-14
+- Validé le : 2026-09-15
 
 ## R002 — Onglet Importer
 - Description : Le bookmarklet, le drop JSON et l'import doivent fonctionner.
@@ -22,4 +22,16 @@
 - Description : Les deux modules doivent démarrer et répondre.
 - Fichiers concernés : `scripts/server.mjs`, `projects/project-a-chatvault/pv.js`, `projects/project-b-python-prompt-vault/src/prompt_vault/ui/server.py`.
 - Test : `curl -s http://127.0.0.1:18431/health` retourne `ready:true` avec `node` et `python` non null.
-- Validé le : 2026-09-14
+- Validé le : 2026-09-15
+
+## R005 — Build automatisé
+- Description : Le script `scripts/build.sh` doit produire une app installable et les archives de distribution.
+- Fichiers concernés : `scripts/build.sh`, `native/PromptMistress.swift`.
+- Test : `./scripts/build.sh 0.2.0 && npm test`.
+- Validé le : 2026-09-15
+
+## R006 — Extension navigateur
+- Description : L'extension doit exposer les fichiers requis et un manifeste V3 valide.
+- Fichiers concernés : `browser-extension/manifest.json`, `browser-extension/content.js`.
+- Test : vérifier le manifeste avec `node scripts/verify.mjs`.
+- Validé le : 2026-09-15

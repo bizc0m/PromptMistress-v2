@@ -8,20 +8,23 @@
 cd /Users/JOB/#DEV/01-projets/_applications/PromptMistress-v2
 git status --short --branch
 git log --oneline -5
+npm test
 open ~/.promptmistress-v2/PromptMistress.app
 curl -s http://127.0.0.1:18431/health
 ```
 
 ## État connu
-- App installée dans `~/.promptmistress-v2/PromptMistress.app`.
+- Repo : branche `main`, remote `https://github.com/bizc0m/PromptMistress-v2`.
+- App installée : `~/.promptmistress-v2/PromptMistress.app`.
 - Serveur local sur le port 18431.
 - Données dans `~/.promptmistress-v2/archives/sources.json`.
-- Node embarqué ; Python en cours d'embarquement.
+- Node + Python embarqués dans le bundle.
+- Extension navigateur dans `browser-extension/`.
+- Build script : `scripts/build.sh`.
+- Tests : `scripts/verify.mjs`.
+- Distribution : `dist/PromptMistress-0.2.0-macOS.zip` + `.dmg`.
 
 ## Prochaine action
-1. Modifier `scripts/server.mjs` pour supporter Python embarqué.
-2. Compiler le lanceur Swift mis à jour.
-3. Assembler le bundle avec Python.
-4. Implémenter les features UI.
-5. Pousser sur GitHub.
-6. Tester.
+1. Pousser les commits sur GitHub.
+2. Tester l'extension dans Chrome/Firefox sur ChatGPT/Perplexity.
+3. Signer avec un vrai certificat développeur Apple si disponible.

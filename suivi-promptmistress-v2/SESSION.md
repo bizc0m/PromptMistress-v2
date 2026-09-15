@@ -3,7 +3,7 @@
 ## En cours
 - **Démarrée** : 2026-09-15
 - **Itération** : 1
-- **prompt_count** : 2
+- **prompt_count** : 3
 - **Focus** : finalisation V2 (extension, bookmarklet, tests, build, sign, dmg, doc)
 
 ## Accès validés

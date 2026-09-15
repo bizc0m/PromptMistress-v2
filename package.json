@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/server.mjs",
-    "test": "node scripts/verify.mjs"
+    "test": "node scripts/verify.mjs",
+    "build": "./scripts/build.sh"
   },
   "engines": {
     "node": ">=20"

@@ -1,7 +1,8 @@
 # PromptMistress V2 — Todo
 
 ## En cours
-- [ ] Pousser V2 sur GitHub remote
+- [ ] Valider l'extension dans un navigateur réel
+- [ ] Obtenir un certificat développeur Apple
 
 ## À faire
 - Mettre à jour `Features.md` après chaque feature livrée.
@@ -26,3 +27,4 @@
 - [x] Signature ad-hoc + support identité développeur
 - [x] Création du `.dmg` et `.zip`
 - [x] Documentation d'installation
+- [x] Pousser V2 sur GitHub remote

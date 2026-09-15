@@ -1,0 +1,59 @@
+name: Build & Test PromptMistress
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Build app
+        run: ./scripts/build.sh ${{ github.ref_name == 'main' && '0.2.0' || '0.2.0-dev' }}
+        env:
+          PROMPTMISTRESS_SIGN_IDENTITY: ${{ secrets.SIGN_IDENTITY || '-' }}
+
+      - name: Run regression tests
+        run: npm test
+
+      - name: Write App Store Connect key
+        if: github.ref_name == 'main' && secrets.SIGN_IDENTITY != ''
+        run: echo "${{ secrets.AC_API_KEY_P8 }}" > ${{ runner.temp }}/AuthKey.p8
+
+      - name: Sign & notarize (release only)
+        if: github.ref_name == 'main' && secrets.SIGN_IDENTITY != ''
+        run: ./scripts/sign-and-notarize.sh
+        env:
+          SIGN_IDENTITY: ${{ secrets.SIGN_IDENTITY }}
+          AC_API_KEY_ID: ${{ secrets.AC_API_KEY_ID }}
+          AC_API_KEY_ISSUER_ID: ${{ secrets.AC_API_KEY_ISSUER_ID }}
+          AC_API_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
+          APP_PATH: ${{ github.workspace }}/dist/build/PromptMistress.app
+          ZIP_PATH: ${{ github.workspace }}/dist/PromptMistress-0.2.0-macOS.zip
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PromptMistress-app
+          path: dist/PromptMistress-*.zip
+
+      - name: Upload dmg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PromptMistress-dmg
+          path: dist/PromptMistress-*.dmg

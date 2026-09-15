@@ -47,10 +47,6 @@ Promise.all(['chatgpt-bookmarklet.js','chatgpt-download.js','perplexity-bookmark
 $('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('code').value);status('Code du favori copié.');}catch{$('code').select();status('Copiez le code sélectionné.');}};
 render();tell('ready');
 
-$("install-bookmarklet").onclick=()=>{$("installation").open=true;$("installation").scrollIntoView({block:"nearest"});};
-if(new URLSearchParams(location.search).has('install')){document.body.classList.add('install-mode');$('capture-tools').open=false;$('install-bookmarklet').click();}
-window.addEventListener('message',e=>{if(e.origin===location.origin&&e.source===parent&&e.data?.pm==='capture-install')$('install-bookmarklet').click();});
-
 async function showCapturePreference(){try{const r=await fetch('/api/preferences');const p=await r.json();if(!r.ok)throw Error(p.error);$('capture-mode').textContent=p.autoImport?'Import automatique activé : les textes reçus sont enregistrés après la capture.':'Import automatique désactivé : cliquez sur Importer après la capture.';$('capture').textContent=p.autoImport?'Capturer + importer':'Capturer la sélection';}catch(e){$('capture-mode').textContent=e.message;}}
 window.addEventListener('message',e=>{if(e.origin===location.origin&&e.source===parent&&e.data?.pm==='preferences-saved')void showCapturePreference();});
 void showCapturePreference();

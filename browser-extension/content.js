@@ -48,8 +48,10 @@ async function listChatGPT(sendMsg) {
   for (const archived of [false, true]) {
     let offset = 0, cursor = null;
     const cursors = new Set();
+    let pageCount = 0;
     try {
       while (true) {
+        pageCount++;
         const q = new URLSearchParams({ offset: String(offset), limit: '100', order: 'updated', is_archived: String(archived) });
         if (cursor) q.set('cursor', cursor);
         const page = await gptGet('/backend-api/conversations?' + q, token);
@@ -62,18 +64,17 @@ async function listChatGPT(sendMsg) {
           rows.push({ id, title: String(item.title || 'Sans titre'), archived, updated: item.update_time || '' });
         }
         if (rows.length) sendMsg('rows', rows);
+        if (page.items.length === 0) break;
         offset += page.items.length;
-        if (!page.items.length) break;
-        if (!rows.length) { notes.push('Pagination sans nouveaux identifiants.'); break; }
         const next = page.next_cursor;
-        if (next) {
-          if (cursors.has(next)) { notes.push('Curseur répété.'); break; }
+        if (next && !cursors.has(next)) {
           cursors.add(next); cursor = next;
-        } else if (page.has_more === false || (typeof page.total === 'number' && offset >= page.total) || (page.has_more !== true && page.items.length < 100)) {
+        } else if (!next || page.has_more === false || (typeof page.total === 'number' && offset >= page.total)) {
           break;
         }
         await delay();
       }
+      notes.push((archived ? 'Archives' : 'Conversations') + ' : ' + pageCount + ' pages lues');
     } catch (e) {
       notes.push((archived ? 'Archives' : 'Conversations') + ' : ' + e.message);
     }

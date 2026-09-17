@@ -15,6 +15,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     var input: Pipe?
     var output: Pipe?
     var buffer = ""
+    var restartCount = 0
+    var maxRestarts = 3
+    var restartDelay = 2.0
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu(); let appItem = NSMenuItem(); menu.addItem(appItem)
         let appMenu = NSMenu(); appMenu.addItem(withTitle: "Quitter PromptMistress", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"); appItem.submenu = appMenu
@@ -51,11 +54,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
                 if let line = self.buffer.split(separator: "\n").first(where: {$0.hasPrefix("READY ")}), let url = URL(string: String(line.dropFirst(6))) { self.output?.fileHandleForReading.readabilityHandler = nil; self.web.load(URLRequest(url: url)) }
             }
         }
-        process.terminationHandler = { [weak self] _ in DispatchQueue.main.async { self?.web.loadHTMLString("<h1>Service local arrêté</h1><p>Fermez puis relancez PromptMistress. Le journal se trouve à côté de l’application.</p>", baseURL: nil) } }
-        do { try process.run() } catch { web.loadHTMLString("<h1>Démarrage impossible</h1><p>Le moteur Node configuré sur ce Mac est indisponible.</p>", baseURL: nil) }
+        process.terminationHandler = { [weak self] _ in DispatchQueue.main.async { self?.handleServerCrash() } }
+        startServer(process)
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationWillTerminate(_ notification: Notification) { output?.fileHandleForReading.readabilityHandler = nil; try? input?.fileHandleForWriting.close(); if server?.isRunning == true { server?.terminate() } }
+
+    func startServer(_ process: Process) {
+        do { try process.run() } catch { web.loadHTMLString("<h1>Démarrage impossible</h1><p>Le moteur Node configuré sur ce Mac est indisponible.</p>", baseURL: nil) }
+    }
+
+    func handleServerCrash() {
+        if restartCount < maxRestarts {
+            restartCount += 1
+            web.loadHTMLString("<h1>Redémarrage du service…</h1><p>Tentative \(restartCount)/\(maxRestarts)</p>", baseURL: nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + restartDelay) {
+                self.restartServer()
+            }
+        } else {
+            web.loadHTMLString("<h1>Service local arrêté</h1><p>Impossible de redémarrer après \(maxRestarts) tentatives.\nFermez puis relancez PromptMistress.\nLe journal se trouve à côté de l'application.</p>", baseURL: nil)
+        }
+    }
+
+    func restartServer() {
+        guard let settings = Bundle.main.resourceURL.flatMap({ NSDictionary(contentsOf: $0.appendingPathComponent("Runtime.plist")) }) else { return }
+        let process = Process()
+        server = process
+        let resources = Bundle.main.resourceURL!
+        process.executableURL = URL(fileURLWithPath: settings["node"] as! String)
+        process.currentDirectoryURL = resources.appendingPathComponent("app")
+        process.arguments = ["scripts/server.mjs"]
+        var env = ProcessInfo.processInfo.environment
+        env["PROMPTMISTRESS_DATA"] = settings["data"] as? String
+        if let python = settings["python"] as? String, !python.isEmpty {
+            env["PROMPTMISTRESS_PYTHON"] = python
+        }
+        process.environment = env
+        input = Pipe()
+        process.standardInput = input!
+        output = Pipe()
+        process.standardOutput = output!
+        let logURL = URL(fileURLWithPath: settings["log"] as! String)
+        process.standardError = try? FileHandle(forWritingTo: logURL)
+        output!.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let data = handle.availableData
+            guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.buffer += text
+                if let line = self.buffer.split(separator: "\n").first(where: {$0.hasPrefix("READY ")}), let url = URL(string: String(line.dropFirst(6))) {
+                    self.restartCount = 0
+                    self.output?.fileHandleForReading.readabilityHandler = nil
+                    self.web.load(URLRequest(url: url))
+                }
+            }
+        }
+        process.terminationHandler = { [weak self] _ in DispatchQueue.main.async { self?.handleServerCrash() } }
+        startServer(process)
+    }
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = action.request.url else { decisionHandler(.cancel); return }
         if action.shouldPerformDownload { decisionHandler(.download); return }

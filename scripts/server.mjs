@@ -12,7 +12,11 @@ import path from 'node:path';
 import net from 'node:net';
 import {spawn,execSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import os from 'node:os';
+import {createRequire} from 'node:module';
 const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const pv=createRequire(import.meta.url)('../projects/project-a-chatvault/pv.js');
+function expandHome(p){return typeof p==='string'&&p.startsWith('~')?path.join(os.homedir(),p.slice(1)):p;}
 const data=process.env.PROMPTMISTRESS_DATA || path.join(root,'data/private');
 // Keep already-open capture pages authorized across a local service restart.
 const captureTokenFile=path.join(data,'.capture-token');
@@ -21,8 +25,8 @@ const captureToken=fs.readFileSync(captureTokenFile,'utf8').trim();
 if(!/^[a-f0-9]{64}$/.test(captureToken))throw Error('Session de capture locale invalide.');
 let archive;
 async function getArchive(){if(!archive)archive=loadArchive(await effectiveSources());return archive;}
-const sourceConfig=JSON.parse(fs.readFileSync(path.join(data,'sources.json'),'utf8'));
-function vaultSource(name){const found=sourceConfig.find(s=>s.type==='vault'&&s.name===name);if(!found||!fs.existsSync(path.join(found.path,'index.json')))throw Error('Vault source absent: '+name);return found.path;}
+const sourceConfig=JSON.parse(fs.readFileSync(path.join(data,'sources.json'),'utf8')).map(s=>s.path?{...s,path:expandHome(s.path)}:s);
+function vaultSource(name){const found=sourceConfig.find(s=>s.type==='vault'&&s.name===name);if(!found)throw Error('Vault source absent: '+name);if(!fs.existsSync(path.join(found.path,'index.json'))){fs.mkdirSync(found.path,{recursive:true});pv.createVault(found.path);pv.rebuildIndex(found.path);}return found.path;}
 const preferences=createPreferencesStore(data,vaultSource('Prompt Vault Node'));
 const pendingSourceReads=new Map();
 async function effectiveSources(){
@@ -63,5 +67,12 @@ if(pathname==='/api/capture'&&req.method==='POST'){res.setHeader('Content-Type',
 if(pathname==='/api/exporter'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');try{const payload=(await getArchive()).exporterData;if(!payload)throw Error('Source Codex Exporter indisponible ; les autres modules restent accessibles.');return res.end(JSON.stringify(payload));}catch(e){res.writeHead(503);return res.end(JSON.stringify({error:e.message}));}}if(pathname.startsWith('/api/archive')){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');try{if(pathname==='/api/archive'&&new URL(req.url,'http://localhost').searchParams.get('refresh')==='1')archive=undefined;const a=await getArchive();if(pathname==='/api/archive')return res.end(JSON.stringify({summary:a.summary,rows:a.rows}));if(pathname==='/api/archive/detail'){const query=new URL(req.url,'http://localhost').searchParams;const d=a.detail(query.get('key'),Number(query.get('variant')||0));if(d)return res.end(JSON.stringify(d));}res.writeHead(404);return res.end('{}');}catch(e){res.writeHead(503);return res.end(JSON.stringify({error:e.message}));}}if(pathname==='/health'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify({app:'PromptMistress',ready:!!node.url&&!!python.url&&node.child.exitCode===null&&python.child.exitCode===null,node:node.url||'/unavailable',python:python.url||'/unavailable'}));}if(pathname==='/unavailable'){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end('<p>Ce moteur n’a pas démarré. Consultez le journal local de PromptMistress.</p>');}const file=files[pathname];if(!file){res.writeHead(404);return res.end('Not found');}res.setHeader('Content-Type',file[1]);let content=fs.readFileSync(path.join(root,file[0]));if(pathname==='/exporter')content=content.toString().replace('</head>','<link rel="stylesheet" href="/styles/exporter-embed.css"></head>').replace('</body>','<script src="/scripts/exporter-connect.js"></script></body>');res.end(content);});
 server.on('error',e=>{console.error(e.message);for(const child of children)child.kill();process.exit(1)});
 server.listen(Number(process.env.PORT||18431),'127.0.0.1',()=>console.log(`READY http://127.0.0.1:${server.address().port}/`));
+if(process.env.PROMPTMISTRESS_NO_AUTOIMPORT!=='1'){
+ const vaultPath=vaultSource('Prompt Vault Node');
+ const imp=spawn(process.execPath,['projects/project-a-chatvault/pv.js','import','--source','all','--vault',vaultPath],{cwd:root,stdio:['ignore','pipe','pipe']});
+ children.push(imp);
+ imp.stderr.on('data',b=>process.stderr.write(`[import] ${b}`));
+ imp.on('exit',code=>{if(code===0){archive=undefined;workspace=undefined;console.log('[import] terminé, sources disque synchronisées');}else console.error(`[import] échec code ${code}`);});
+}
 process.on('SIGTERM',stop);process.on('SIGINT',stop);
 if(process.stdin.isTTY){process.stdin.resume();process.stdin.on('end',stop);}

@@ -8,10 +8,12 @@
     "start": "node scripts/server.mjs",
     "test": "node scripts/verify.mjs && node scripts/test-extension.mjs",
     "test:extension": "node scripts/test-extension.mjs",
+    "test:extension:real": "node scripts/test-extension-real.mjs",
     "build": "./scripts/build.sh"
   },
   "devDependencies": {
     "jsdom": "^30.0.1",
+    "playwright": "^1.63.0",
     "puppeteer-core": "^23.0.0"
   },
   "engines": {

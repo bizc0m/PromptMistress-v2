@@ -1,0 +1,4 @@
+[
+  {"name": "Prompt Vault Node", "type": "vault", "path": "/Users/JOB/#DEV/01-projets/_applications/chatvault/PromptVault"},
+  {"name": "Prompt Vault Python", "type": "vault", "path": "/Users/JOB/.promptmistress-v2/vaults/python"}
+]

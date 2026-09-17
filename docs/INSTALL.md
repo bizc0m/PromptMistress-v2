@@ -81,7 +81,9 @@ node scripts/server.mjs
 
 Puis ouvrez <http://127.0.0.1:18431/>.
 
-## Extension navigateur
+## Extension navigateur (BETA)
+
+⚠️ **En cours de validation** — Signaler les bugs sur GitHub.
 
 1. Ouvrez Chrome/Edge : `chrome://extensions/` (ou `edge://extensions/`).
 2. Activez le **Mode développeur**.
@@ -89,6 +91,8 @@ Puis ouvrez <http://127.0.0.1:18431/>.
 4. Sélectionnez le dossier `browser-extension`.
 
 Sur Firefox : `about:debugging` → **Charger un module complémentaire temporaire** → `browser-extension/manifest.json`.
+
+Pour plus de détails : voir `browser-extension/README.md`.
 
 ## Bookmarklet (alternative à l'extension)
 

@@ -20,9 +20,10 @@
 - Documentation dans `docs/INSTALL.md`.
 
 ## Reste à faire
-1. Valider l'extension dans un navigateur réel (ChatGPT/Perplexity).
+1. Valider l'extension dans un navigateur réel (ChatGPT/Perplexity) → v0.2.1+ après tests.
 2. Obtenir un certificat développeur Apple pour une signature/notarisation officielle.
 
 ## Version
-- Courante : 0.2.0
-- Prochaine : 0.2.1 après validation externe
+- Courante : 0.2.0 (extension marquée BETA, mode dev nécessaire)
+- Prochaine : 0.2.1 après validation extension réelle
+- Roadmap : 0.3.0 avec extension signée + Apple cert optionnel

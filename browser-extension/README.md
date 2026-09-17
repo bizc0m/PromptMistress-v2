@@ -1,5 +1,7 @@
 # PromptMistress Capturer — Extension navigateur
 
+⚠️ **BETA** — Extension en cours de validation. Signaler les bugs sur GitHub.
+
 Extension Chrome / Edge / Firefox (mode développeur) pour capturer les conversations ChatGPT et Perplexity dans l'app PromptMistress locale.
 
 ## Prérequis
@@ -13,6 +15,8 @@ Extension Chrome / Edge / Firefox (mode développeur) pour capturer les conversa
 2. Activez le **Mode développeur** en haut à droite.
 3. Cliquez sur **Charger l'extension non empaquetée**.
 4. Sélectionnez ce dossier `browser-extension`.
+
+⚠️ **Mode développeur requis** — L'extension n'est pas encore dans le Chrome Web Store.
 
 ## Installation Firefox (temporaire)
 

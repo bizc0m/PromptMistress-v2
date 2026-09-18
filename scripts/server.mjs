@@ -75,10 +75,19 @@ server.on('error',e=>{console.error(e.message);for(const child of children)child
 server.listen(Number(process.env.PORT||18431),'127.0.0.1',()=>console.log(`READY http://127.0.0.1:${server.address().port}/`));
 if(process.env.PROMPTMISTRESS_NO_AUTOIMPORT!=='1'){
  const vaultPath=vaultSource('Prompt Vault Node');
- const imp=spawn(process.execPath,['projects/project-a-chatvault/pv.js','import','--source','all','--vault',vaultPath],{cwd:root,stdio:['ignore','pipe','pipe']});
- children.push(imp);
- imp.stderr.on('data',b=>process.stderr.write(`[import] ${b}`));
- imp.on('exit',code=>{if(code===0){archive=undefined;workspace=undefined;console.log('[import] terminé, sources disque synchronisées');}else console.error(`[import] échec code ${code}`);});
+ let importing=false,lastImportStart=0;
+ function runImport(){
+  if(importing)return;importing=true;
+  const since=lastImportStart,startedAt=Date.now();
+  const args=['projects/project-a-chatvault/pv.js','import','--source','all','--vault',vaultPath];
+  if(since)args.push('--since',String(since));
+  const imp=spawn(process.execPath,args,{cwd:root,stdio:['ignore','pipe','pipe']});
+  children.push(imp);
+  imp.stderr.on('data',b=>process.stderr.write(`[import] ${b}`));
+  imp.on('exit',code=>{importing=false;if(code===0){lastImportStart=startedAt;archive=undefined;workspace=undefined;console.log(`[import] terminé${since?' (incrémental)':''}, sources disque synchronisées`);}else console.error(`[import] échec code ${code}`);});
+ }
+ runImport();
+ setInterval(runImport,Number(process.env.PROMPTMISTRESS_IMPORT_INTERVAL_MS||120000)).unref();
 }
 process.on('SIGTERM',stop);process.on('SIGINT',stop);
 if(process.stdin.isTTY){process.stdin.resume();process.stdin.on('end',stop);}

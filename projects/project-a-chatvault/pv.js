@@ -1380,6 +1380,7 @@ function importCommand(args) {
   for (const src of sources) {
     let files = inputFiles(args);
     if (!files.length) files = sourceFiles(src, args).filter(file => inDateRange(file, args));
+    if (args.since) files = files.filter(file => fs.statSync(file).mtimeMs > Number(args.since));
     if (args.limit) files = files.slice(0, Number(args.limit));
     for (const file of files) {
       if (src === "chatgpt") imported.push(...importChatGptFile(root, file));

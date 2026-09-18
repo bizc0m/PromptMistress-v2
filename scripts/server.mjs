@@ -25,7 +25,13 @@ const captureToken=fs.readFileSync(captureTokenFile,'utf8').trim();
 if(!/^[a-f0-9]{64}$/.test(captureToken))throw Error('Session de capture locale invalide.');
 let archive;
 async function getArchive(){if(!archive)archive=loadArchive(await effectiveSources());return archive;}
-const sourceConfig=JSON.parse(fs.readFileSync(path.join(data,'sources.json'),'utf8')).map(s=>s.path?{...s,path:expandHome(s.path)}:s);
+const sourcesFile=path.join(data,'sources.json');
+if(!fs.existsSync(sourcesFile)){
+ fs.mkdirSync(data,{recursive:true});
+ const bundled=path.join(root,'data','private','sources.json');
+ fs.writeFileSync(sourcesFile,fs.existsSync(bundled)?fs.readFileSync(bundled,'utf8'):JSON.stringify([{name:'Prompt Vault Node',type:'vault',path:'~/.promptmistress-v2/vaults/node'},{name:'Prompt Vault Python',type:'vault',path:'~/.promptmistress-v2/vaults/python'}],null,2));
+}
+const sourceConfig=JSON.parse(fs.readFileSync(sourcesFile,'utf8')).map(s=>s.path?{...s,path:expandHome(s.path)}:s);
 function vaultSource(name){const found=sourceConfig.find(s=>s.type==='vault'&&s.name===name);if(!found)throw Error('Vault source absent: '+name);if(!fs.existsSync(path.join(found.path,'index.json'))){fs.mkdirSync(found.path,{recursive:true});pv.createVault(found.path);pv.rebuildIndex(found.path);}return found.path;}
 const preferences=createPreferencesStore(data,vaultSource('Prompt Vault Node'));
 const pendingSourceReads=new Map();

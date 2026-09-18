@@ -31,19 +31,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         web.loadHTMLString("<body style='font:18px -apple-system;padding:60px;background:#f7f6f3'><h1>PromptMistress</h1><p>Démarrage des modules locaux…</p></body>", baseURL: nil)
         let process = Process(); server = process
         let resources = Bundle.main.resourceURL!
-        let settings = NSDictionary(contentsOf: resources.appendingPathComponent("Runtime.plist"))!
-        process.executableURL = URL(fileURLWithPath: settings["node"] as! String)
+        let paths = serverPaths()
+        process.executableURL = URL(fileURLWithPath: paths.node)
         process.currentDirectoryURL = resources.appendingPathComponent("app")
         process.arguments = ["scripts/server.mjs"]
         var env = ProcessInfo.processInfo.environment
-        env["PROMPTMISTRESS_DATA"] = settings["data"] as? String
-        if let python = settings["python"] as? String, !python.isEmpty {
-            env["PROMPTMISTRESS_PYTHON"] = python
-        }
+        env["PROMPTMISTRESS_DATA"] = paths.data
+        if let python = paths.python { env["PROMPTMISTRESS_PYTHON"] = python }
         process.environment = env
         input = Pipe(); process.standardInput = input!
         output = Pipe(); process.standardOutput = output!
-        let logURL = URL(fileURLWithPath: settings["log"] as! String)
+        let logURL = URL(fileURLWithPath: paths.log)
         FileManager.default.createFile(atPath: logURL.path, contents: nil)
         process.standardError = try? FileHandle(forWritingTo: logURL)
         output!.fileHandleForReading.readabilityHandler = { [weak self] handle in
@@ -76,25 +74,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         }
     }
 
+    func serverPaths() -> (node: String, python: String?, data: String, log: String) {
+        let resources = Bundle.main.resourceURL!
+        let base = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".promptmistress-v2")
+        let archives = base.appendingPathComponent("archives")
+        let logs = base.appendingPathComponent("logs")
+        try? FileManager.default.createDirectory(at: archives, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true)
+        let pythonURL = resources.appendingPathComponent("Python3/bin/python3")
+        let python = FileManager.default.fileExists(atPath: pythonURL.path) ? pythonURL.path : nil
+        return (resources.appendingPathComponent("bin/node").path,
+                python,
+                archives.path,
+                logs.appendingPathComponent("PromptMistress.log").path)
+    }
+
     func restartServer() {
-        guard let settings = Bundle.main.resourceURL.flatMap({ NSDictionary(contentsOf: $0.appendingPathComponent("Runtime.plist")) }) else { return }
         let process = Process()
         server = process
         let resources = Bundle.main.resourceURL!
-        process.executableURL = URL(fileURLWithPath: settings["node"] as! String)
+        let paths = serverPaths()
+        process.executableURL = URL(fileURLWithPath: paths.node)
         process.currentDirectoryURL = resources.appendingPathComponent("app")
         process.arguments = ["scripts/server.mjs"]
         var env = ProcessInfo.processInfo.environment
-        env["PROMPTMISTRESS_DATA"] = settings["data"] as? String
-        if let python = settings["python"] as? String, !python.isEmpty {
-            env["PROMPTMISTRESS_PYTHON"] = python
-        }
+        env["PROMPTMISTRESS_DATA"] = paths.data
+        if let python = paths.python { env["PROMPTMISTRESS_PYTHON"] = python }
         process.environment = env
         input = Pipe()
         process.standardInput = input!
         output = Pipe()
         process.standardOutput = output!
-        let logURL = URL(fileURLWithPath: settings["log"] as! String)
+        let logURL = URL(fileURLWithPath: paths.log)
         process.standardError = try? FileHandle(forWritingTo: logURL)
         output!.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData

@@ -109,6 +109,7 @@ function duplicateGroupKey(item) {
 
 function isNoisyPromptTitle(line) {
   const l = String(line || "").trim();
+  const ls = l.replace(/^#+\s*/, ""); // strip heading markers before keyword checks
   return l.length < 10 ||
     /^[{\[\d]/.test(l) ||
     /^```|^<\/?[\w!-]+(?:\s|>)/.test(l) ||
@@ -117,21 +118,16 @@ function isNoisyPromptTitle(line) {
     /(?:=>|[{}]|;\s*$|\b(?:document|window|fs|JSON)\.)/.test(l) ||
     /^(?:tu\s+(?:vois|voios|vois? quoi|a[s]?)|avis|ok|oui|non)\s*(?:quoi|le projet|ça|ca)?\s*[?.!]*$/i.test(l) ||
     /^(?:try\s|catch\s|(?:public|private|protected|static|final|override)\s|func\s|Launching skill:)/i.test(l) ||
-    /^#+\s*(Objectif|Prompt|Contexte requis|Résultat attendu|Files mentioned by the user|In app browser|AGENTS\.md instructions)\s*:?\s*/i.test(l) ||
-    /^(Objectif|Contexte requis|Résultat attendu|In app browser)\s*:?\s*$/i.test(l) ||
-    /^AGENTS\.md instructions/i.test(l) ||
-    /^Referenced ChatGPT conversation/i.test(l) ||
-    /^Prior conversation with Codex/i.test(l) ||
-    /^Automation:/i.test(l) ||
+    /^(Objectif|Prompt|Contexte requis|Résultat attendu|Files mentioned by the user|In app browser|AGENTS\.md instructions)\s*:?\s*/i.test(ls) ||
+    /^(AGENTS\.md instructions|Referenced ChatGPT conversation|Prior conversation with Codex|Automation:)/i.test(ls) ||
     /^<\/?(in-app-browser-context|recommended_plugins|codex_delegation)\b/i.test(l) ||
-    /^The following is the Codex agent history/i.test(l) ||
-    /^Files mentioned by the user:?$/i.test(l) ||
-    /^Here is a list of plugins that are available but not installed/i.test(l) ||
+    /^The following is the Codex agent history/i.test(ls) ||
+    /^Files mentioned by the user:?$/i.test(ls) ||
+    /^Here is a list of plugins that are available but not installed/i.test(ls) ||
     /^---[A-Z _-]+---$/i.test(l) ||
     /^(?:Exit code \d+|Command running in background|COMMAND\s+PID\s)/i.test(l) ||
     /^total\s+\d+$/i.test(l) ||
     /^[dl-][rwx-]{9}@?\s+\d+\s+/i.test(l) ||
-    /^## Referenced ChatGPT conversation/i.test(l) ||
     /^\[external unsupported block:/i.test(l) ||
     /^\d+\s+/i.test(l) ||
     /^\d+$/i.test(l) ||

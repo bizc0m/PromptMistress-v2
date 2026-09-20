@@ -308,15 +308,26 @@ function resetBoolean(){
  booleanPending=false;searchTerms=[];matchedVariants=new Map();$('boolean-status').textContent='';if(detail)paint();
 }
 function ensureBoolean(query,kind){
- const signature=JSON.stringify([query,kind,searchRevision,$('full-text').checked]);if(signature===booleanSignature)return;
+ const booleanMode=$('search-mode').value==='boolean';
+ const signature=JSON.stringify([query,kind,searchRevision,$('full-text').checked,booleanMode]);if(signature===booleanSignature)return;
  booleanSignature=signature;booleanKeys=new Set();booleanPending=true;
- const run=++booleanRun;clearTimeout(booleanTimer);booleanEngine.cancel();$('boolean-status').textContent='Recherche NyxBoolean…';
+ const run=++booleanRun;clearTimeout(booleanTimer);booleanEngine.cancel();$('boolean-status').textContent='Recherche…';
  booleanTimer=setTimeout(async()=>{try{
   const useContent=$('full-text').checked;
   const content=useContent?await loadCorpus():[];if(run!==booleanRun)return;
+  // Mode simple + full-text : recherche JS sans WASM
+  if(!booleanMode&&useContent){
+   const terms=query.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().split(/\s+/).filter(Boolean);
+   matchedVariants=new Map();booleanKeys=new Set();
+   for(const entry of content){
+    const hay=(entry.text||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+    if(terms.every(t=>hay.includes(t))){booleanKeys.add(entry.key);if(!matchedVariants.has(entry.key))matchedVariants.set(entry.key,entry);}
+   }
+   searchTerms=terms.map(t=>({op:'term',value:t}));booleanPending=false;$('boolean-status').textContent='Texte · '+booleanKeys.size+' résultat(s)';render();if(detail)paint();return;
+  }
   const scope=rows.filter(r=>!kind||r.kind===kind),byKey=new Map(scope.map(r=>[r.key,r]));
   const documents=[],candidates=new Map();
-  if(useContent){for(const entry of content){const row=byKey.get(entry.key);if(!row)continue;const d=booleanDocument(row,annotation(row));d.Key=JSON.stringify([entry.key,entry.variant]);d.Fields.push(entry.text.slice(0,50000));documents.push(d);candidates.set(d.Key,entry);}}
+  if(useContent){for(const entry of content){const row=byKey.get(entry.key);if(!row)continue;const d=booleanDocument(row,annotation(row));d.Key=JSON.stringify([entry.key,entry.variant]);d.Fields.push(entry.text.slice(0,8000));documents.push(d);candidates.set(d.Key,entry);}}
   else for(const row of scope)documents.push(booleanDocument(row,annotation(row)));
   const keys=await booleanEngine.search(query,documents);if(run!==booleanRun)return;
   searchTerms=keys.terms||[];matchedVariants=new Map();booleanKeys=new Set();

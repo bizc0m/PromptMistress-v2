@@ -118,8 +118,12 @@ function isNoisyPromptTitle(line) {
     /^(?:tu\s+(?:vois|voios|vois? quoi|a[s]?)|avis|ok|oui|non)\s*(?:quoi|le projet|ça|ca)?\s*[?.!]*$/i.test(l) ||
     /^(?:try\s|catch\s|(?:public|private|protected|static|final|override)\s|func\s|Launching skill:)/i.test(l) ||
     /^#+\s*(Objectif|Prompt|Contexte requis|Résultat attendu|Files mentioned by the user|In app browser|AGENTS\.md instructions)\s*:?\s*/i.test(l) ||
+    /^AGENTS\.md instructions/i.test(l) ||
+    /^Referenced ChatGPT conversation/i.test(l) ||
+    /^Prior conversation with Codex/i.test(l) ||
+    /^Automation:/i.test(l) ||
     /^<\/?(in-app-browser-context|recommended_plugins|codex_delegation)\b/i.test(l) ||
-    /^The following is the Codex agent history added since your last approval assessment/i.test(l) ||
+    /^The following is the Codex agent history/i.test(l) ||
     /^Files mentioned by the user:?$/i.test(l) ||
     /^Here is a list of plugins that are available but not installed/i.test(l) ||
     /^---[A-Z _-]+---$/i.test(l) ||

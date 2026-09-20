@@ -118,6 +118,7 @@ function isNoisyPromptTitle(line) {
     /^(?:tu\s+(?:vois|voios|vois? quoi|a[s]?)|avis|ok|oui|non)\s*(?:quoi|le projet|ça|ca)?\s*[?.!]*$/i.test(l) ||
     /^(?:try\s|catch\s|(?:public|private|protected|static|final|override)\s|func\s|Launching skill:)/i.test(l) ||
     /^#+\s*(Objectif|Prompt|Contexte requis|Résultat attendu|Files mentioned by the user|In app browser|AGENTS\.md instructions)\s*:?\s*/i.test(l) ||
+    /^(Objectif|Contexte requis|Résultat attendu|In app browser)\s*:?\s*$/i.test(l) ||
     /^AGENTS\.md instructions/i.test(l) ||
     /^Referenced ChatGPT conversation/i.test(l) ||
     /^Prior conversation with Codex/i.test(l) ||
@@ -507,8 +508,10 @@ function extractMarkdownConversation(raw, fallbackId) {
 function titleFromMessages(messages, fallback) {
   for (const message of messages) {
     if (message.role !== "user") continue;
-    const line = message.content.trim().split(/\r?\n/)[0].replace(/^#+\s*/, "").trim();
-    if (!isNoisyPromptTitle(line)) return message.content.replace(/\s+/g, " ").trim().slice(0, 90);
+    const rawLine = message.content.trim().split(/\r?\n/)[0].trim();
+    if (!isNoisyPromptTitle(rawLine)) {
+      return message.content.replace(/\s+/g, " ").trim().replace(/^#+\s*/, "").slice(0, 90);
+    }
   }
   return `Conversation — ${fallback}`;
 }

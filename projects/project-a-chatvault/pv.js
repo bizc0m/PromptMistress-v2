@@ -666,12 +666,13 @@ function curatedPath(root, chat) {
   return path.join(projectDir(root, chat.project), "chats", `${chat.id}.md`);
 }
 
-function removeOldCuratedCopies(root, id, keepPath) {
+function removeOldCuratedCopies(root, id, keepPath, sourceId) {
   const files = walk(root, p => p.endsWith(".md") && !p.includes(`${path.sep}RAW${path.sep}`));
   for (const file of files) {
     if (file === keepPath) continue;
-    const head = fs.readFileSync(file, "utf8").slice(0, 300);
-    if (head.includes(`id: ${id}`)) fs.rmSync(file);
+    const head = fs.readFileSync(file, "utf8").slice(0, 400);
+    if (head.includes(`id: ${id}`)) { fs.rmSync(file); continue; }
+    if (sourceId && head.includes(`source_id: "${sourceId}"`) && head.match(/^id: pv_chat_/m)) fs.rmSync(file);
   }
 }
 
@@ -713,7 +714,7 @@ function importSourceFile(root, source, file) {
     title
   };
   const chatPath = curatedPath(root, chat);
-  removeOldCuratedCopies(root, id, chatPath);
+  removeOldCuratedCopies(root, id, chatPath, chat.source_id);
   ensureDir(path.dirname(chatPath));
   const prompts = extractPrompts(parsed.messages, { source });
   fs.writeFileSync(chatPath, chatMarkdown(chat, parsed.messages, prompts));

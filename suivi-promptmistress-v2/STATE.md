@@ -3,8 +3,8 @@
 ## Session en cours
 - **Démarrée** : 2026-09-15
 - **Itération** : 2
-- **prompt_count** : 2
-- **Dernier focus** : finalisation V2
+- **prompt_count** : 3
+- **Dernier focus** : 2026-09-20 — points 1–4 vérifiés, titres A/B corrigés sur main
 
 ## État actuel
 - Repo : `main`, remote `https://github.com/bizc0m/PromptMistress-v2`.
@@ -27,3 +27,10 @@
 - Courante : 0.2.0 (extension marquée BETA, mode dev nécessaire)
 - Prochaine : 0.2.1 après validation extension réelle
 - Roadmap : 0.3.0 avec extension signée + Apple cert optionnel
+
+## Vérification du 2026-09-20
+- M5.lan ; dépôt local sur main ; tests réalisés dans Chrome sur le serveur du dépôt, pas dans le bundle installé.
+- Points 1–4 validés ; détails et limites : REGRESSION.md R007–R009.
+- A : titres générés invalides ignorés ; commit `ad580d5`. B : date/heure UTC en tête des titres de conversations Claude.
+- Serveur courant lancé avec `PROMPTMISTRESS_NO_AUTOIMPORT=1` pour préserver les données pendant les corrections ciblées ; ceci ne modifie pas la configuration persistante.
+- Aucun push ; C (installation d’extension) non traité.

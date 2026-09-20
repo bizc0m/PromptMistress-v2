@@ -52,3 +52,12 @@
 - Le premier redémarrage a lancé l’import automatique existant : trois identifiants supplémentaires, aucun identifiant antérieur supprimé. Import ensuite suspendu pour limiter les mises à jour aux titres.
 - Redémarrages de test : processus `node scripts/server.mjs` ciblé (le motif large touche aussi Codex), `PROMPTMISTRESS_NO_AUTOIMPORT=1 npm start > /tmp/pm.log 2>&1`.
 - Rejeu d’une vraie session Claude : « tu voios quoi ? » devient « pourquoi il manque tout les prompts ? » ; sorties de commandes et code Swift écartés.
+
+## R009 — Sessions Claude datées (B, 2026-09-20)
+- Titre généré : `[YYYY-MM-DD HH:mm:ss UTC] <titre>` ; début de session, jamais la date d’import ou la dernière mise à jour. Préfixe pour rester visible dans les colonnes étroites.
+- Une date manquante ou invalide n’est pas inventée.
+- Deux sessions au même intitulé et à des heures différentes restent distinctes. Trois réimports par session gardent titre, identifiant et nombre de conversations stables.
+- Régression A rejouée avec les titres horodatés : JSON, titres courts, code et sorties terminal rejetés.
+- 153 titres Claude existants mis à jour et relus ; aucun autre contenu de fiche modifié par cette migration.
+- Les prompts extraits restent des entrées distinctes ; la date ne constitue pas une déduplication.
+- Chrome : dates en tête visibles sur capture ; 153 conversations Claude, zéro groupe de titres identiques après migration. `node scripts/verify.mjs` : PASS, zéro échec.

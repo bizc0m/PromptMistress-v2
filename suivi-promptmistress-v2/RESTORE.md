@@ -29,3 +29,11 @@ curl -s http://127.0.0.1:18431/health
 ## Prochaine action
 1. Tester l'extension dans Chrome/Firefox sur ChatGPT/Perplexity.
 2. Signer avec un vrai certificat développeur Apple si disponible.
+
+## Reprise après corrections A/B du 2026-09-20
+- Voir REGRESSION.md R007–R009 pour les tests réels et STATE.md pour le périmètre terminé.
+- Le serveur courant utilise `PROMPTMISTRESS_NO_AUTOIMPORT=1 npm start > /tmp/pm.log 2>&1` ; un prochain `npm start` normal relancera l’import automatique existant.
+- Pour redémarrer ce serveur uniquement, cibler `pkill -f '^node scripts/server.mjs$'` : le motif large `server.mjs` correspond aussi aux services Codex sur ce Mac.
+- Sauvegarde avant titres : `/Users/JOB/Documents/Codex/2026-09-20/referenced-chatgpt-conversation-this-is-an-2/work/pre-title-fix/node-vault`.
+- L’app distribuée n’a pas été reconstruite ; validation dans Chrome du serveur du dépôt.
+- C reste hors périmètre ; ne pas installer l’extension à la reprise sans nouvelle demande.

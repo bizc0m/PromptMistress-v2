@@ -509,6 +509,14 @@ function titleFromMessages(messages, fallback) {
   return `Conversation — ${fallback}`;
 }
 
+function claudeSessionTitle(title, created) {
+  const date = new Date(created);
+  if (!created || Number.isNaN(date.getTime())) return title;
+  const stamp = date.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  const prefix = `[${stamp}] `;
+  return title.startsWith(prefix) ? title : prefix + title;
+}
+
 function classify(text) {
   const hay = text.toLowerCase();
   const hits = [];
@@ -696,7 +704,8 @@ function importSourceFile(root, source, file) {
   const raw = fs.readFileSync(file, "utf8");
   const parsed = sourceExtractor(source)(raw, file);
   const rawInfo = rawDest(root, source, file, raw, parsed.sessionId);
-  const title = parsed.title || titleFromMessages(parsed.messages, path.basename(file, path.extname(file)));
+  const generatedTitle = titleFromMessages(parsed.messages, path.basename(file, path.extname(file)));
+  const title = parsed.title || (source === "claude" ? claudeSessionTitle(generatedTitle, parsed.created) : generatedTitle);
   const text = `${title}\n${parsed.messages.map(m => m.content).join("\n")}`;
   const cls = classify(text);
   const id = `pv_chat_${rawInfo.id}`;

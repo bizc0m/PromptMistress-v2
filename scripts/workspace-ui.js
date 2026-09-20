@@ -318,8 +318,10 @@ function ensureBoolean(query,kind){
   // Mode simple + full-text : recherche JS sans WASM
   if(!booleanMode&&useContent){
    const terms=query.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().split(/\s+/).filter(Boolean);
+   const kindKeys=kind?new Set(rows.filter(r=>r.kind===kind).map(r=>r.key)):null;
    matchedVariants=new Map();booleanKeys=new Set();
    for(const entry of content){
+    if(kindKeys&&!kindKeys.has(entry.key))continue;
     const hay=(entry.text||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
     if(terms.every(t=>hay.includes(t))){booleanKeys.add(entry.key);if(!matchedVariants.has(entry.key))matchedVariants.set(entry.key,entry);}
    }

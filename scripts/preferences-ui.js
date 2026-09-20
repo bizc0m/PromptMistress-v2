@@ -11,7 +11,7 @@ prefsDialog.addEventListener('cancel',e=>{if(preferencesSaving)e.preventDefault(
 prefsForm.onsubmit=async e=>{e.preventDefault();if(preferencesSaving)return;preferencesSaving=true;pref('save').disabled=true;prefsStatus.textContent='Enregistrement…';try{
  const auth=await fetch('/api/capture-token').then(r=>r.json());
  const value={autoImport:pref('auto').checked,destination:pref('destination').value.trim(),afterImport:pref('after').value,duplicates:pref('duplicates').value};
- const r=await fetch('/api/preferences',{method:'POST',headers:{'Content-Type':'application/json','X-Capture-Token':auth.token},body:JSON.stringify(value)});const p=await r.json();if(!r.ok)throw Error(p.error);fillPreferences(p);prefsStatus.textContent='Préférences enregistrées. Elles seront conservées au prochain lancement.';
+ const r=await fetch('/api/preferences',{method:'POST',headers:{'Content-Type':'application/json','X-Capture-Token':auth.token},body:JSON.stringify(value)});const p=await r.json();if(!r.ok)throw Error(p.error);fillPreferences(p);prefsStatus.textContent='Préférences enregistrées.';setTimeout(()=>prefsDialog.close(),800);
  document.getElementById('capture-frame').contentWindow.postMessage({pm:'preferences-saved'},location.origin);
  for(const selector of ['#final iframe','#workspace-frame']){const f=document.querySelector(selector);if(f?.src)f.src=f.src;}
 }catch(e){prefsStatus.textContent='Non enregistré : '+e.message;}finally{preferencesSaving=false;pref('save').disabled=false;}};

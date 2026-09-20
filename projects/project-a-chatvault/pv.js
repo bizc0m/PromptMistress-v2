@@ -555,14 +555,14 @@ function messagesFromChatMarkdown(text) {
   return messages;
 }
 
-function rawDest(root, source, file, raw) {
-  const id = sha(file + "\n" + raw).slice(0, 16);
+function rawDest(root, source, file, raw, sessionId) {
+  const id = sessionId ? sha(sessionId).slice(0, 16) : sha(file + "\n" + raw).slice(0, 16);
   const year = (file.match(/sessions\/(\d{4})\//) || [])[1] || new Date().getFullYear();
   return { id, dest: path.join(root, "RAW", source, String(year), `${id}-${path.basename(file)}`) };
 }
 
 function writeRawOnce(dest, raw) {
-  if (fs.existsSync(dest)) return false;
+  if (fs.existsSync(dest) && fs.readFileSync(dest, "utf8") === raw) return false;
   ensureDir(path.dirname(dest));
   fs.writeFileSync(dest, raw);
   return true;
@@ -688,9 +688,8 @@ function sourceExtractor(source) {
 
 function importSourceFile(root, source, file) {
   const raw = fs.readFileSync(file, "utf8");
-  const rawInfo = rawDest(root, source, file, raw);
-  writeRawOnce(rawInfo.dest, raw);
   const parsed = sourceExtractor(source)(raw, file);
+  const rawInfo = rawDest(root, source, file, raw, parsed.sessionId);
   const title = parsed.title || titleFromMessages(parsed.messages, path.basename(file, path.extname(file)));
   const text = `${title}\n${parsed.messages.map(m => m.content).join("\n")}`;
   const cls = classify(text);

@@ -109,13 +109,21 @@ function duplicateGroupKey(item) {
 
 function isNoisyPromptTitle(line) {
   const l = String(line || "").trim();
-  return !l ||
+  return l.length < 10 ||
+    /^[{\[\d]/.test(l) ||
+    /^```|^<\/?[\w!-]+(?:\s|>)/.test(l) ||
+    /^["'][^"']+["']\s*:/.test(l) ||
+    /^(?:import |export |async function |def |from \S+ import |return |console\.|(?:const|let|var)\s)/.test(l) ||
+    /(?:=>|[{}]|;\s*$|\b(?:document|window|fs|JSON)\.)/.test(l) ||
+    /^(?:tu\s+(?:vois|voios|vois? quoi|a[s]?)|avis|ok|oui|non)\s*(?:quoi|le projet|ça|ca)?\s*[?.!]*$/i.test(l) ||
+    /^(?:try\s|catch\s|(?:public|private|protected|static|final|override)\s|func\s|Launching skill:)/i.test(l) ||
     /^#+\s*(Objectif|Prompt|Contexte requis|Résultat attendu|Files mentioned by the user|In app browser|AGENTS\.md instructions)\s*:?\s*/i.test(l) ||
     /^<\/?(in-app-browser-context|recommended_plugins|codex_delegation)\b/i.test(l) ||
     /^The following is the Codex agent history added since your last approval assessment/i.test(l) ||
     /^Files mentioned by the user:?$/i.test(l) ||
     /^Here is a list of plugins that are available but not installed/i.test(l) ||
     /^---[A-Z _-]+---$/i.test(l) ||
+    /^(?:Exit code \d+|Command running in background|COMMAND\s+PID\s)/i.test(l) ||
     /^total\s+\d+$/i.test(l) ||
     /^[dl-][rwx-]{9}@?\s+\d+\s+/i.test(l) ||
     /^## Referenced ChatGPT conversation/i.test(l) ||
@@ -493,15 +501,12 @@ function extractMarkdownConversation(raw, fallbackId) {
 }
 
 function titleFromMessages(messages, fallback) {
-  const firstUser = messages.find(m => {
-    const c = m.content.trim();
-    return m.role === "user"
-      && c
-      && !c.startsWith("<recommended_plugins>")
-      && !c.startsWith("<environment_context>");
-  });
-  const source = firstUser ? firstUser.content : fallback;
-  return source.replace(/\s+/g, " ").trim().slice(0, 90) || fallback;
+  for (const message of messages) {
+    if (message.role !== "user") continue;
+    const line = message.content.trim().split(/\r?\n/)[0].replace(/^#+\s*/, "").trim();
+    if (!isNoisyPromptTitle(line)) return message.content.replace(/\s+/g, " ").trim().slice(0, 90);
+  }
+  return `Conversation — ${fallback}`;
 }
 
 function classify(text) {

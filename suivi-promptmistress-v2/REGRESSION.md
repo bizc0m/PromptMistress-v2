@@ -35,3 +35,20 @@
 - Fichiers concernés : `browser-extension/manifest.json`, `browser-extension/content.js`.
 - Test : vérifier le manifeste avec `node scripts/verify.mjs`.
 - Validé le : 2026-09-15
+
+## R007 — Recherche, préférences et Refresh (2026-09-20)
+- Test Chrome réel sur le serveur du dépôt, port 18431 : « claude » saisi sans Entrée, 7 053 → 165 résultats.
+- Préférences : Enregistrer affiche « Préférences enregistrées. » puis ferme le dialogue.
+- Simple + Texte : « mirae », 37 résultats sans Texte → 422 avec Texte ; 14 106 versions chargées. Calcul momentanément bloquant.
+- Trois clics Refresh terminés : 1 419 conversations et 5 634 prompts stables ; 9 218 fichiers inchangés (chemins, tailles, dates de modification).
+- Limite : Refresh relit les sources ; un test isolé d’import a aussi conservé une seule conversation après trois versions successives d’une session.
+
+## R008 — Titres générés (A)
+- Rejeter les titres courts (< 10 caractères), JSON, lignes numérotées, code et questions vagues signalées ; chercher le prochain message utilisateur exploitable.
+- À défaut : « Conversation — <identifiant source> ». Les messages et identifiants restent conservés.
+- Test d’import isolé : dix entrées invalides suivies d’un message pertinent donnent ce dernier comme titre ; messages initiaux conservés ; repli sans titre testé.
+- Le lecteur des prompts extraits applique le même filtre aux titres proposés.
+- Application locale : seules les lignes de titre générées ont été remplacées, avec contrôle identique du reste de chaque fiche et relecture après écriture. Sauvegarde locale préalable du vault.
+- Le premier redémarrage a lancé l’import automatique existant : trois identifiants supplémentaires, aucun identifiant antérieur supprimé. Import ensuite suspendu pour limiter les mises à jour aux titres.
+- Redémarrages de test : processus `node scripts/server.mjs` ciblé (le motif large touche aussi Codex), `PROMPTMISTRESS_NO_AUTOIMPORT=1 npm start > /tmp/pm.log 2>&1`.
+- Rejeu d’une vraie session Claude : « tu voios quoi ? » devient « pourquoi il manque tout les prompts ? » ; sorties de commandes et code Swift écartés.

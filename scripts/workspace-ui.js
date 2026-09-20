@@ -316,7 +316,7 @@ function ensureBoolean(query,kind){
   const content=useContent?await loadCorpus():[];if(run!==booleanRun)return;
   const scope=rows.filter(r=>!kind||r.kind===kind),byKey=new Map(scope.map(r=>[r.key,r]));
   const documents=[],candidates=new Map();
-  if(useContent){for(const entry of content){const row=byKey.get(entry.key);if(!row)continue;const d=booleanDocument(row,annotation(row));d.Key=JSON.stringify([entry.key,entry.variant]);d.Fields.push(entry.text);documents.push(d);candidates.set(d.Key,entry);}}
+  if(useContent){for(const entry of content){const row=byKey.get(entry.key);if(!row)continue;const d=booleanDocument(row,annotation(row));d.Key=JSON.stringify([entry.key,entry.variant]);d.Fields.push(entry.text.slice(0,50000));documents.push(d);candidates.set(d.Key,entry);}}
   else for(const row of scope)documents.push(booleanDocument(row,annotation(row)));
   const keys=await booleanEngine.search(query,documents);if(run!==booleanRun)return;
   searchTerms=keys.terms||[];matchedVariants=new Map();booleanKeys=new Set();

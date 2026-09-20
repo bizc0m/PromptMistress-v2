@@ -50,16 +50,17 @@ function persist(key,value){if(!saved)throw Error('Stockage des annotations indi
 let noticeTimer;function notify(e){clearTimeout(noticeTimer);$('notice').textContent=e instanceof Error?e.message:e;if(!(e instanceof Error))noticeTimer=setTimeout(()=>{$('notice').textContent='';},8000);}
 function render(){
  const q=$('search').value.trim(),booleanMode=$('search-mode').value==='boolean';
- $('boolean-help').hidden=!booleanMode;$('full-text').disabled=!booleanMode;$('full-text').closest('label').hidden=!booleanMode;
- if(booleanMode&&q)ensureBoolean(q,$('kind').value);else resetBoolean();
+ $('boolean-help').hidden=!booleanMode;$('full-text').disabled=false;$('full-text').closest('label').hidden=false;
+ const useBoolean=booleanMode||(!!q&&$('full-text').checked);
+ if(useBoolean&&q)ensureBoolean(q,$('kind').value);else resetBoolean();
  if(facetsDirty){renderExplorer();facetsDirty=false;}
  updateFacets();
  const extras=[$('search-mode').value==='boolean',$('has-content').checked,$('date-from').value,$('date-to').value,$('filter-status').value].filter(Boolean).length;$('advanced-filters').querySelector('summary').textContent='Filtres'+(extras?' ('+extras+')':'');
  $('provider').dataset.provider=$('provider').value;
  for(const b of document.querySelectorAll("[data-kind-view]"))b.setAttribute("aria-pressed",String(b.dataset.kindView===$("kind").value));
  for(const b of document.querySelectorAll("[data-source-view]"))b.setAttribute("aria-pressed",String(b.dataset.sourceView===$("provider").value));
- const kind=$('kind').value,provider=$('provider').value,content=$('has-content').checked,filter={view:$('visibility').value,project:$('project-filter').value,tag:explorerTag,folder:explorerFolder,query:booleanMode?'':q};
- visible=rows.filter(r=>(!kind||r.kind===kind)&&(!provider||r.provider===provider)&&(!content||r.hasContent)&&matches(r,annotation(r),filter)&&(!$('date-from').value||String(r.updated).slice(0,10)>=$('date-from').value)&&(!$('date-to').value||(r.updated&&String(r.updated).slice(0,10)<=$('date-to').value))&&(!$('filter-status').value||annotation(r).status===$('filter-status').value)&&(!booleanMode||!q||booleanKeys.has(r.key)));
+ const kind=$('kind').value,provider=$('provider').value,content=$('has-content').checked,filter={view:$('visibility').value,project:$('project-filter').value,tag:explorerTag,folder:explorerFolder,query:useBoolean?'':q};
+ visible=rows.filter(r=>(!kind||r.kind===kind)&&(!provider||r.provider===provider)&&(!content||r.hasContent)&&matches(r,annotation(r),filter)&&(!$('date-from').value||String(r.updated).slice(0,10)>=$('date-from').value)&&(!$('date-to').value||(r.updated&&String(r.updated).slice(0,10)<=$('date-to').value))&&(!$('filter-status').value||annotation(r).status===$('filter-status').value)&&(!useBoolean||!q||booleanKeys.has(r.key)));
  // Preserve selection across filters; prune only when a source refresh removes a key.
  if(active&&!visible.some(r=>r.key===active.key)){retainDraft();active=null;dirty=false;detail=null;serial++;$('record').hidden=true;$('empty').hidden=false;$('body').textContent='Sélectionne un élément';$('body-fold').open=false;}
  $('no-results').hidden=visible.length>0||booleanPending;

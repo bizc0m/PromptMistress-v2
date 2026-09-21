@@ -5,5 +5,7 @@ const ready=(async()=>{
  if(!response.ok)throw Error('Module NyxBoolean indisponible.');
  const {instance}=await WebAssembly.instantiate(await response.arrayBuffer(),go.importObject);
  go.run(instance).catch(error=>{throw error;});
+ // go.run starts Go's main() asynchronously; poll until it registers nyxBooleanEvaluate
+ await new Promise((resolve,reject)=>{const start=Date.now();const wait=()=>{if(typeof nyxBooleanEvaluate==='function')return resolve();if(Date.now()-start>8000)return reject(new Error('NyxBoolean : initialisation expirée.'));setTimeout(wait,25);};wait();});
 })();
 onmessage=async({data})=>{try{await ready;const result=JSON.parse(nyxBooleanEvaluate(JSON.stringify(data.request)));postMessage({id:data.id,...result});}catch(error){postMessage({id:data.id,error:error.message,keys:[]});}};

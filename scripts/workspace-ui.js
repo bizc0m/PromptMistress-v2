@@ -38,6 +38,7 @@ let rows=[],active=null,detail=null,limit=100,serial=0,hash='',selected=new Set(
 const booleanEngine=createBooleanSearch();
 let corpus=null,corpusPromise=null,corpusGeneration='',corpusEpoch=0,matchedVariants=new Map(),searchTerms=[],hitIndex=-1;
 let booleanSignature='',booleanKeys=new Set(),booleanRun=0,booleanTimer=null,booleanPending=false,searchRevision=0;
+let openGroups=new Set();
 const format=n=>n.toLocaleString('fr-FR');
 const exporterId=r=>r?.variants.find(v=>v.editor?.module==='exporter')?.editor.id;
 function manualAnnotation(r){const id=exporterId(r);let original={};try{if(id)original=bridge().annotation(id);}catch{}return {...original,...(saved?.[r.key]||{})};}
@@ -91,16 +92,25 @@ function render(){
  }
  table.style.width=tableWidth+'px';head.append(header);table.append(head);
  const tbody=document.createElement('tbody');table.append(tbody);
- for(const r of visible.slice(0,limit)){
-   const a=annotation(r),item=document.createElement('tr');item.className='item'+(r.key===active?.key?' active':'');item.dataset.color=a.color||'';item.draggable=true;item.ondragstart=e=>{e.dataTransfer.setData('text/plain',r.key);e.dataTransfer.effectAllowed='move';};
+ // Build display list: group rows sharing the same title
+ const titleCount=new Map();for(const r of visible)titleCount.set(r.title,(titleCount.get(r.title)||0)+1);
+ const displayList=[];const seenGroups=new Set();
+ for(const r of visible){
+  const cnt=titleCount.get(r.title)||1;
+  if(cnt>1){
+   if(!seenGroups.has(r.title)){seenGroups.add(r.title);displayList.push({type:'group',title:r.title,items:visible.filter(x=>x.title===r.title)});}
+  }else displayList.push({type:'row',r});
+ }
+ const renderRow=(r,isChild=false)=>{
+   const a=annotation(r),item=document.createElement('tr');item.className='item'+(isChild?' group-child':'')+(r.key===active?.key?' active':'');item.dataset.color=a.color||'';item.draggable=true;item.ondragstart=e=>{e.dataTransfer.setData('text/plain',r.key);e.dataTransfer.effectAllowed='move';};
    item.oncontextmenu=e=>{e.preventDefault();choose(r);openReaderMenu(e,true);};
   let cellIndex=-1;const cell=()=>{const td=document.createElement('td');if(cellIndex>=0){td.dataset.column=columns[cellIndex][0];td.hidden=!view.columns[columns[cellIndex][0]];}cellIndex++;item.append(td);return td;};
   const check=document.createElement('input');check.type='checkbox';check.checked=selected.has(r.key);check.setAttribute('aria-label','Sélectionner '+r.title);check.onchange=()=>{check.checked?selected.add(r.key):selected.delete(r.key);selectionCount();};cell().append(check);
   const date=cell();date.className='date-cell';const d=new Date(r.updated);
   if(r.updated&&!Number.isNaN(d.valueOf())){
-   const visible=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+   const vis=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
    const full=d.toLocaleString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-   const stamp=document.createElement('span');stamp.className='date-tip';stamp.tabIndex=0;stamp.textContent=visible;stamp.dataset.tip=full;stamp.title=full;date.append(stamp);
+   const stamp=document.createElement('span');stamp.className='date-tip';stamp.tabIndex=0;stamp.textContent=vis;stamp.dataset.tip=full;stamp.title=full;date.append(stamp);
   }else date.textContent='—';
   const llm=document.createElement('span');llm.className='vault-badge provider';llm.dataset.provider=r.provider;llm.textContent=r.provider||'—';cell().append(llm);
   const title=cell();title.className='title-cell';const toggle=document.createElement('button');toggle.className='row-fold';toggle.textContent=r.key===active?.key&&fold.open?'▾':'▸';toggle.setAttribute('aria-label','Déplier / replier '+r.title);toggle.setAttribute('aria-expanded',String(r.key===active?.key&&fold.open));toggle.onclick=async()=>{if(active?.key===r.key){fold.open=!fold.open;render();}else {await choose(r);fold.open=true;render();}};title.append(toggle);
@@ -120,6 +130,30 @@ function render(){
   actions.append(hideBtn,archiveBtn);item.append(actions);
   tbody.append(item);
   if(r.key===active?.key){const contentRow=document.createElement('tr');contentRow.className='content-row';const contentCell=document.createElement('td');contentCell.colSpan=1+columns.filter(([id])=>view.columns[id]).length;contentCell.append(fold);contentRow.append(contentCell);tbody.append(contentRow);}
+ };
+ let rendered=0;
+ for(const entry of displayList){
+  if(rendered>=limit)break;
+  if(entry.type==='row'){renderRow(entry.r);rendered++;}
+  else{
+   const isOpen=openGroups.has(entry.title);
+   const groupRow=document.createElement('tr');groupRow.className='item group-header';
+   const colSpan=1+columns.filter(([id])=>view.columns[id]).length;
+   const checkTd=document.createElement('td');const groupCheck=document.createElement('input');groupCheck.type='checkbox';const groupKeys=entry.items.map(r=>r.key);const allSel=groupKeys.every(k=>selected.has(k));groupCheck.checked=allSel;groupCheck.indeterminate=!allSel&&groupKeys.some(k=>selected.has(k));groupCheck.onchange=()=>{groupKeys.forEach(k=>groupCheck.checked?selected.add(k):selected.delete(k));selectionCount();};checkTd.append(groupCheck);groupRow.append(checkTd);
+   const dateTd=document.createElement('td');dateTd.dataset.column='date';dateTd.hidden=!view.columns['date'];dateTd.className='date-cell';dateTd.textContent='×'+entry.items.length;groupRow.append(dateTd);
+   const llmTd=document.createElement('td');llmTd.dataset.column='llm';llmTd.hidden=!view.columns['llm'];groupRow.append(llmTd);
+   const titleTd=document.createElement('td');titleTd.dataset.column='title';titleTd.className='title-cell';
+   const groupToggle=document.createElement('button');groupToggle.className='row-fold group-fold';groupToggle.textContent=isOpen?'▾':'▶';groupToggle.title=(isOpen?'Replier':'Déplier')+' ce groupe';groupToggle.onclick=()=>{isOpen?openGroups.delete(entry.title):openGroups.add(entry.title);render();};titleTd.append(groupToggle);
+   const groupTitle=document.createElement('span');groupTitle.className='row-title group-title';appendMarked(groupTitle,entry.title);groupTitle.title=entry.title;titleTd.append(groupTitle);
+   const countBadge=document.createElement('span');countBadge.className='row-type';countBadge.textContent=entry.items.length+' sessions';titleTd.append(countBadge);
+   groupRow.append(titleTd);
+   const projTd=document.createElement('td');projTd.dataset.column='project';projTd.hidden=!view.columns['project'];groupRow.append(projTd);
+   const statusTd=document.createElement('td');statusTd.dataset.column='status';groupRow.append(statusTd);
+   const srcTd=document.createElement('td');srcTd.dataset.column='source';groupRow.append(srcTd);
+   const actionsTd=document.createElement('td');actionsTd.className='row-actions';groupRow.append(actionsTd);
+   tbody.append(groupRow);
+   if(isOpen){for(const r of entry.items){if(rendered>=limit)break;renderRow(r,true);rendered++;}}
+  }
  }
  $('list').append(table);if(!fold.isConnected){$('body-parking').append(fold);}
  $('more').hidden=visible.length<=limit;selectionCount();

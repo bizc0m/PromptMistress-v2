@@ -817,6 +817,7 @@ function rebuildIndex(root) {
       title,
       project: get("project"),
       source: get("source"),
+      source_id: get("source_id"),
       created: get("created"),
       updated: get("updated"),
       status: get("status"),

@@ -76,12 +76,17 @@ server.listen(Number(process.env.PORT||18431),'127.0.0.1',()=>console.log(`READY
 if(process.env.PROMPTMISTRESS_NO_AUTOIMPORT!=='1'){
  const vaultPath=vaultSource('Prompt Vault Node');
  let importing=false;
+ const sinceFile=path.join(vaultPath,'.last-import');
  function runImport(){
   if(importing)return;importing=true;
-  const imp=spawn(process.execPath,['projects/project-a-chatvault/pv.js','import','--source','all','--vault',vaultPath],{cwd:root,stdio:['ignore','pipe','pipe']});
+  const since=fs.existsSync(sinceFile)?fs.readFileSync(sinceFile,'utf8').trim():'';
+  const launchAt=Date.now();
+  const args=['projects/project-a-chatvault/pv.js','import','--source','all','--vault',vaultPath];
+  if(since)args.push('--since',since);
+  const imp=spawn(process.execPath,args,{cwd:root,stdio:['ignore','pipe','pipe']});
   children.push(imp);
   imp.stderr.on('data',b=>process.stderr.write(`[import] ${b}`));
-  imp.on('exit',code=>{importing=false;if(code===0){archive=undefined;workspace=undefined;console.log('[import] terminé, sources disque synchronisées');}else console.error(`[import] échec code ${code}`);});
+  imp.on('exit',code=>{importing=false;if(code===0){fs.writeFileSync(sinceFile,String(launchAt));archive=undefined;workspace=undefined;console.log('[import] terminé, sources disque synchronisées');}else console.error(`[import] échec code ${code}`);});
  }
  runImport();
  global.runImport=runImport;

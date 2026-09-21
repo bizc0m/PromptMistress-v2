@@ -13,7 +13,14 @@ export function importCapture(vault, payload, {duplicates='skip'}={}) {
  const attachmentPlans=new Map(list.filter(c=>c.pmAttachments!==undefined).map(c=>[c,prepareAttachments(c.pmAttachments)]));
  const index=JSON.parse(fs.readFileSync(path.join(vault,'index.json'),'utf8'));
  const seen=new Set();
- for(const row of index.items||index){if(!['chatgpt','perplexity'].includes(row.source))continue;const file=path.resolve(vault,row.path);if(!file.startsWith(path.resolve(vault)+path.sep))throw Error('Chemin hors vault');const body=fs.readFileSync(file,'utf8');const match=body.match(/^source_id:\s*(.*)$/m);if(match){let id=match[1];try{id=JSON.parse(id)}catch{id=id.replace(/^["']|["']$/g,'')}seen.add(row.source+':'+id);}}
+ for(const row of index.items||index){
+  if(!['chatgpt','perplexity'].includes(row.source))continue;
+  if(row.source_id){seen.add(row.source+':'+row.source_id);continue;}
+  // Fallback for index entries built before source_id was indexed: read the file once.
+  const file=path.resolve(vault,row.path);if(!file.startsWith(path.resolve(vault)+path.sep))throw Error('Chemin hors vault');
+  const body=fs.readFileSync(file,'utf8');const match=body.match(/^source_id:\s*(.*)$/m);
+  if(match){let id=match[1];try{id=JSON.parse(id)}catch{id=id.replace(/^["']|["']$/g,'')}seen.add(row.source+':'+id);}
+ }
  let imported=0,skipped=0;
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'promptmistress-capture-'));
  try{for(const c of list){const id=c.conversation_id||c.id;const source=c.source==='perplexity'?'perplexity':'chatgpt',key=source+':'+id;if(seen.has(key)&&duplicates==='skip'){if(attachmentPlans.has(c))saveAttachments(vault,source,id,attachmentPlans.get(c));skipped++;continue;}const clean={...c};delete clean.pmAttachments;const file=path.join(tmp,'conversation.json');fs.writeFileSync(file,JSON.stringify(source==='perplexity'?normalizePerplexity(clean):{...clean,url:`https://chatgpt.com/c/${encodeURIComponent(id)}`}),{mode:0o600});if(source==='perplexity')pv.importSourceFile(vault,source,file);else pv.importChatGptFile(vault,file);if(attachmentPlans.has(c))saveAttachments(vault,source,id,attachmentPlans.get(c));seen.add(key);imported++;}if(imported)pv.rebuildIndex(vault);}finally{fs.rmSync(tmp,{recursive:true,force:true});}

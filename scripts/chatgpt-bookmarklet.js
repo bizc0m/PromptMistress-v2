@@ -31,7 +31,7 @@ small.count{color:var(--bone-2);font-size:11px;padding:4px 10px;display:block;bo
  <div id="list"></div>
  <div id="progress"></div>
  <div id="status">Connexion à PromptMistress…</div>
- <div class="bar"><button id="capture-btn" disabled>Capturer</button><button id="stop-btn">Arrêter</button><button id="import-btn" disabled>Importer dans PM</button></div>
+ <div class="bar"><button id="capture-btn" disabled>Capturer + Importer</button><button id="stop-btn">Arrêter</button><button id="import-btn" disabled>Réessayer import</button></div>
 </div>`;
 
  const $=id=>ui.getElementById(id);
@@ -122,25 +122,26 @@ small.count{color:var(--bone-2);font-size:11px;padding:4px 10px;display:block;bo
    done++;setProgress(done,ids.length);await delay();
   }
   busy=false;render();
-  if(received.size)setStatus(received.size+' texte(s) prêts. Cliquez sur Importer dans PM.');
+  if(received.size&&captureToken&&!stopped)await doImport();
+  else if(received.size)setStatus(received.size+' texte(s) prêts. Cliquez sur Importer dans PM.');
   else setStatus('Aucun texte récupéré.');
  };
 
- $('import-btn').onclick=async()=>{
-  if(busy||!token&&!received.size)return;
+ async function doImport(){
   busy=true;render();setStatus('Envoi vers PromptMistress…');
   try{
    const conversations=[...received.values()].filter(c=>!c.imported&&!c.skipped);
-   if(!conversations.length){setStatus('Tout est déjà importé.');busy=false;render();return;}
+   if(!conversations.length){setStatus('Tout est déjà présent dans le vault.');busy=false;render();return;}
    const r=await fetch(PM+'/api/capture',{method:'POST',headers:{'Content-Type':'application/json','X-Capture-Token':captureToken},body:JSON.stringify({conversations})});
    if(!r.ok){const e=await r.json().catch(()=>({}));throw Error(e.error||'HTTP '+r.status);}
    const result=await r.json();
    for(const c of conversations){const rec=received.get(c.id||c.conversation_id);if(rec)rec.imported=true;}
    setStatus('✓ '+result.imported+' importée(s), '+result.skipped+' déjà présente(s).');
-   render();
+   render();setProgress(0,0);
   }catch(e){setStatus('Erreur import : '+e.message+'\nVérifiez que PromptMistress tourne sur '+PM);}
   finally{busy=false;render();}
- };
+ }
+ $('import-btn').onclick=()=>doImport();
 
  // Fetch PM token then start
  let captureToken='';

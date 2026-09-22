@@ -58,7 +58,7 @@ const files={'/scripts/attachment-capture.js':['scripts/attachment-capture.js','
 const externalOrigins=new Set(['https://chatgpt.com','https://www.perplexity.ai','https://perplexity.ai']);
 server=http.createServer(async(req,res)=>{const pathname=new URL(req.url,'http://localhost').pathname;
  const reqOrigin=req.headers.origin||'';
- if(externalOrigins.has(reqOrigin)&&(pathname==='/api/capture-token'||pathname==='/api/capture')){res.setHeader('Access-Control-Allow-Origin',reqOrigin);res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type,X-Capture-Token');res.setHeader('Vary','Origin');if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}}
+ if(externalOrigins.has(reqOrigin)&&(pathname==='/api/capture-token'||pathname==='/api/capture'||pathname==='/api/preferences')){res.setHeader('Access-Control-Allow-Origin',reqOrigin);res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type,X-Capture-Token');res.setHeader('Vary','Origin');if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}}
  if(pathname==='/api/capture-token'&&req.method==='GET'){res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({token:captureToken}));}if(pathname==='/api/preferences'){
  res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');
  if(req.method==='GET'){try{return res.end(JSON.stringify(await preferences.read()));}catch(e){res.writeHead(409);return res.end(JSON.stringify({error:e.message,defaults:preferences.defaults}));}}

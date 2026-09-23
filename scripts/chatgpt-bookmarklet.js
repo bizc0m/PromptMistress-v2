@@ -48,7 +48,7 @@
 
  (async()=>{
   try{const r=await fetch(PM+'/api/capture-token',{credentials:'omit'});if(!r.ok)throw Error();const d=await r.json();pmToken=d.token;}
-  catch{alert('PromptMistress inaccessible ('+PM+'). Assurez-vous qu'il tourne.');return;}
+  catch{alert('PromptMistress inaccessible ('+PM+'). Verifiez que le service tourne.');return;}
   // Open or reuse PM capture window
   pmWin=window.open(PM+'/capture','pm-capture','popup,width=540,height=760');
   if(!pmWin){alert('Popup bloqué. Autorisez les popups pour chatgpt.com.');return;}

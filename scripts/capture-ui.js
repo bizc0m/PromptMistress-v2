@@ -6,6 +6,7 @@ PREUVE: Test visuel dans /capture avec export JSON.
 Fichier precedent: capture-ui.js (v0.1 initiale)
 */
 const $=id=>document.getElementById(id), rows=new Map(), selection=new Set(), received=new Map();
+const stagedIds=new Set();let awaiting=null;
 let token,busy=false,importing=false,bridge=false,loadedFile=false;const peerSources=new Map();
 let captureQueue=[],batchTimer=null,captureRun=0,finishing=false;
 const FIRST_BATCH=50,NEXT_BATCH=20,BATCH_DELAY=5*60*1000;
@@ -14,10 +15,60 @@ async function finishBatch(payload){if(finishing)return;finishing=true;const run
 const nonce=window.__PM_BRIDGE_NONCE__||new URLSearchParams(location.search).get('bridge');
 function tell(type,payload={}){if(nonce)parent.postMessage({pm:'capture-ui',type,payload,nonce},'*');for(const[w,pn]of peerSources)try{w.postMessage({pm:'capture-ui',type,payload,nonce:pn},'*');}catch{}}
 function status(text){$('status').textContent=text;}
-function render(){const q=$('search').value.toLowerCase();const searchContent=$('search-content').checked;$('rows').replaceChildren();let shown=0;for(const r of rows.values()){let haystack=r.title.toLowerCase();if(searchContent){const data=received.get(r.id);if(data)haystack+=' '+JSON.stringify(data).toLowerCase();}if(!haystack.includes(q))continue;shown++;const label=document.createElement('label'),box=document.createElement('input'),title=document.createElement('span'),note=document.createElement('small');box.type='checkbox';box.checked=selection.has(r.id);box.disabled=busy||importing;box.onchange=()=>{box.checked?selection.add(r.id):selection.delete(r.id);counts();};title.textContent=r.title;note.textContent=received.has(r.id)?'Texte reçu':r.archived?'Archivé':'À récupérer';label.append(box,title,note);$('rows').append(label);}if(!shown)$('rows').textContent=rows.size?(searchContent?'Aucun résultat correspondant.':'Aucun titre correspondant.'):'Connectez le site avec le favori, ou ouvrez un export JSON.';counts();}
-function counts(){$('count').textContent=`${rows.size} chats · ${selection.size} sélectionnés · ${received.size} reçus`;$('capture').disabled=!bridge||busy||!selection.size;$('import').disabled=busy||importing||![...selection].some(id=>received.has(id));$('all').disabled=$('none').disabled=busy||importing;}
+function render(){const q=$('search').value.toLowerCase();const searchContent=$('search-content').checked;$('rows').replaceChildren();let shown=0;for(const r of rows.values()){let haystack=r.title.toLowerCase();if(searchContent){const data=received.get(r.id);if(data)haystack+=' '+JSON.stringify(data).toLowerCase();}if(!haystack.includes(q))continue;shown++;const label=document.createElement('label'),box=document.createElement('input'),title=document.createElement('span'),note=document.createElement('small');box.type='checkbox';box.checked=selection.has(r.id);box.disabled=busy||importing;box.onchange=()=>{box.checked?selection.add(r.id):selection.delete(r.id);counts();};title.textContent=r.title;note.textContent=(received.has(r.id)||stagedIds.has(r.id))?'Texte reçu':r.archived?'Archivé':'À récupérer';if(r.source)note.textContent=(r.source==='perplexity'?'Perplexity · ':'GPT · ')+note.textContent;label.append(box,title,note);$('rows').append(label);}if(!shown)$('rows').textContent=rows.size?(searchContent?'Aucun résultat correspondant.':'Aucun titre correspondant.'):'Connectez le site avec le favori, ou ouvrez un export JSON.';counts();}
+function counts(){const have=received.size+stagedIds.size;$('count').textContent=`${rows.size} chats · ${selection.size} sélectionnés · ${have} reçus`;$('capture').disabled=busy||!selection.size;$('import').disabled=busy||importing||![...selection].some(id=>received.has(id)||stagedIds.has(id));$('all').disabled=$('none').disabled=busy||importing;}
 $('search').oninput=render;$('search-content').onchange=render;$('all').onclick=()=>{for(const id of rows.keys())selection.add(id);render();};$('none').onclick=()=>{selection.clear();render();};
-$('capture').onclick=()=>{if(busy||importing)return;captureRun++;captureQueue=[...selection].filter(id=>!received.has(id));if(!captureQueue.length){void importSelection();return;}launchBatch(FIRST_BATCH);};
+$('capture').onclick=async()=>{
+ if(busy||importing)return;captureRun++;
+ const want=[...selection].filter(id=>!received.has(id)&&!stagedIds.has(id));
+ if(!want.length){void doImport();return;}
+ if(bridge){captureQueue=want;launchBatch(FIRST_BATCH);return;}
+ // Staging mode: ask whichever sites are connected to fetch these.
+ try{
+  busy=true;render();status(`Demande de ${want.length} conversation(s) aux sites ouverts…`);
+  await authReady;
+  const r=await fetch('/api/stage/wanted',{method:'POST',headers:{'Content-Type':'application/json','X-Capture-Token':token},body:JSON.stringify({ids:want})});
+  if(!r.ok)throw Error((await r.json()).error||'Service local indisponible');
+  awaiting=new Set(want);
+ }catch(e){busy=false;render();status('Demande échouée : '+e.message);}
+};
+async function doImport(){
+ const staged=[...selection].filter(id=>stagedIds.has(id));
+ if(staged.length)return importStaged(staged);
+ return importSelection();
+}
+async function importStaged(ids,prefix=''){
+ if(importing)return;importing=true;busy=false;render();status(prefix+'Import en cours…');
+ try{
+  await authReady;
+  const r=await fetch('/api/stage/import',{method:'POST',headers:{'Content-Type':'application/json','X-Capture-Token':token},body:JSON.stringify({ids})});
+  const d=await r.json();if(!r.ok)throw Error(d.error||'Service local indisponible');
+  for(const id of ids)stagedIds.delete(id);
+  status(prefix+`${d.imported} importée(s), ${d.skipped} déjà présente(s). Aucun fichier source remplacé.`);
+  return true;
+ }catch(e){status(prefix+'Import échoué : '+e.message+'. Les textes restent en attente côté service.');return false;}
+ finally{importing=false;render();}
+}
+// Sites on different origins cannot share a browser window, so they stage on the
+// service and this page polls for whatever has arrived from any of them.
+async function pollStage(){
+ try{
+  await authReady;
+  const r=await fetch('/api/stage',{headers:{'X-Capture-Token':token}});
+  if(!r.ok)return;
+  const d=await r.json();let changed=false;
+  for(const row of d.rows||[]){if(!rows.has(row.id)){rows.set(row.id,row);selection.add(row.id);changed=true;}}
+  for(const id of d.receivedIds||[])if(!stagedIds.has(id)){stagedIds.add(id);changed=true;}
+  if(changed){loadedFile=false;render();if(!busy&&!importing)status(`${rows.size} chat(s) · ${received.size+stagedIds.size} texte(s) reçu(s).`);}
+  if(awaiting&&[...awaiting].every(id=>stagedIds.has(id))){
+   const ids=[...awaiting];awaiting=null;busy=false;
+   const prefs=await(await fetch('/api/preferences')).json().catch(()=>({}));
+   if(prefs.autoImport)await importStaged(ids,'Capture terminée. ');
+   else{render();status(`${ids.length} texte(s) reçu(s). Cliquez sur Importer dans Vault.`);}
+  }
+ }catch{}
+}
+setInterval(pollStage,1500);void pollStage();
 $('stop').onclick=()=>{captureRun++;captureQueue=[];if(batchTimer!==null){clearTimeout(batchTimer);batchTimer=null;busy=false;render();status('Capture en pause. Les textes reçus sont conservés.');}tell('stop');};
 window.addEventListener('message',e=>{
  if(e.data?.pm!=='bridge-v1')return;
@@ -67,7 +118,7 @@ async function importSelection(prefix='',automatic=false){
  }catch(e){status(prefix+'Import échoué : '+e.message+'. Les textes sont conservés dans cette fenêtre. Cliquez sur Importer pour réessayer.');return false;}
  finally{importing=false;render();}
 }
-$('import').onclick=()=>importSelection();
+$('import').onclick=()=>doImport();
 const authReady=fetch('/api/capture-token').then(r=>{if(!r.ok)throw Error('Service local indisponible');return r.json();}).then(auth=>{token=auth.token;});
 authReady.catch(()=>status('Service local indisponible.'));
 if(!nonce)Promise.all(['chatgpt-bookmarklet.js','chatgpt-download.js','perplexity-bookmarklet.js','capture-menu.js','attachment-capture.js'].map(name=>fetch('/scripts/'+name).then(r=>{if(!r.ok)throw Error('Chargement impossible');return r.text();}))).then(([gpt,fallback,per,menu,helper])=>{gpt=gpt.replace('/*PM_ATTACHMENT_HELPER*/',()=>helper);per=per.replace('/*PM_ATTACHMENT_HELPER*/',()=>helper);const direct=menu.replace('__GPT__',()=>gpt).replace('__PERPLEXITY__',()=>per);$('bookmark').href='javascript:'+encodeURIComponent(direct);$('fallback').href='javascript:'+encodeURIComponent(fallback);$('code').value=$('bookmark').href;}).catch(()=>status('Service local indisponible.'));

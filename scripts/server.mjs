@@ -56,10 +56,58 @@ let pythonBin=process.env.PROMPTMISTRESS_PYTHON;if(!pythonBin){const candidates=
 const python=await launch('python',pythonBin,p=>['-c','import sys; from pathlib import Path; from prompt_vault.ui.server import serve; serve(Path(sys.argv[1]), "127.0.0.1", int(sys.argv[2]))',vaultSource('Prompt Vault Python'),String(p)],{PYTHONPATH:path.join(root,'projects/project-b-python-prompt-vault/src')});
 const files={'/scripts/attachment-capture.js':['scripts/attachment-capture.js','text/javascript; charset=utf-8'],'/scripts/workspace-view.mjs':['scripts/workspace-view.mjs','text/javascript; charset=utf-8'],'/scripts/zip.mjs':['scripts/zip.mjs','text/javascript; charset=utf-8'],'/scripts/workspace-rules-ui.js':['scripts/workspace-rules-ui.js','text/javascript; charset=utf-8'],'/scripts/workspace-rules.mjs':['scripts/workspace-rules.mjs','text/javascript; charset=utf-8'],'/scripts/message-content.mjs':['scripts/message-content.mjs','text/javascript; charset=utf-8'],'/scripts/perplexity-bookmarklet.js':['scripts/perplexity-bookmarklet.js','text/javascript; charset=utf-8'],'/scripts/capture-menu.js':['scripts/capture-menu.js','text/javascript; charset=utf-8'],'/scripts/search-highlights.mjs':['scripts/search-highlights.mjs','text/javascript; charset=utf-8'],'/scripts/nyx-boolean-client.js':['scripts/nyx-boolean-client.js','text/javascript; charset=utf-8'],'/scripts/nyx-boolean-worker.js':['scripts/nyx-boolean-worker.js','text/javascript; charset=utf-8'],'/vendor/go-wasm/wasm_exec.js':['vendor/go-wasm/wasm_exec.js','text/javascript; charset=utf-8'],'/vendor/NyxBoolean/nyx-boolean.wasm':['vendor/NyxBoolean/nyx-boolean.wasm','application/wasm'],'/scripts/explorer.mjs':['scripts/explorer.mjs','text/javascript; charset=utf-8'],'/scripts/preferences-ui.js':['scripts/preferences-ui.js','text/javascript; charset=utf-8'],'/workspace':['workspace.html','text/html; charset=utf-8'],'/scripts/workspace-ui.js':['scripts/workspace-ui.js','text/javascript; charset=utf-8'],'/styles/workspace.css':['styles/workspace.css','text/css; charset=utf-8'],'/scripts/unified.js':['scripts/unified.js','text/javascript; charset=utf-8'],'/fusion':['fusion.html','text/html; charset=utf-8'],'/scripts/shell-capture.js':['scripts/shell-capture.js','text/javascript; charset=utf-8'],'/scripts/capture-ui.js':['scripts/capture-ui.js','text/javascript; charset=utf-8'],'/scripts/chatgpt-download.js':['scripts/chatgpt-download.js','text/javascript; charset=utf-8'],'/styles/nyx.css':['styles/nyx.css','text/css; charset=utf-8'],'/capture':['capture.html','text/html; charset=utf-8'],'/scripts/chatgpt-bookmarklet.js':['scripts/chatgpt-bookmarklet.js','text/javascript; charset=utf-8'],'/scripts/exporter-connect.js':['scripts/exporter-connect.js','text/javascript; charset=utf-8'],'/library':['library.html','text/html; charset=utf-8'],'/styles/exporter-embed.css':['styles/exporter-embed.css','text/css; charset=utf-8'],'/':['index.html','text/html; charset=utf-8'],'/index.html':['index.html','text/html; charset=utf-8'],'/exporter':['projects/project-b-import/codex_history_public_import.html','text/html; charset=utf-8']};
 const externalOrigins=new Set(['https://chatgpt.com','https://www.perplexity.ai','https://perplexity.ai']);
+// Shared staging area: window names are not shared across origins, so ChatGPT and
+// Perplexity cannot reach one browser window. They meet here instead.
+const stage={rows:new Map(),conversations:new Map(),wanted:new Set()};
+const STAGE_MAX_ROWS=20000;
 server=http.createServer(async(req,res)=>{const pathname=new URL(req.url,'http://localhost').pathname;
  const reqOrigin=req.headers.origin||'';
- if(externalOrigins.has(reqOrigin)&&(pathname==='/api/capture-token'||pathname==='/api/capture'||pathname==='/api/preferences')){res.setHeader('Access-Control-Allow-Origin',reqOrigin);res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type,X-Capture-Token');res.setHeader('Vary','Origin');if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}}
- if(pathname==='/api/capture-token'&&req.method==='GET'){res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({token:captureToken}));}if(pathname==='/api/preferences'){
+ if(externalOrigins.has(reqOrigin)&&(pathname==='/api/capture-token'||pathname==='/api/capture'||pathname==='/api/preferences'||pathname.startsWith('/api/stage'))){res.setHeader('Access-Control-Allow-Origin',reqOrigin);res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type,X-Capture-Token');res.setHeader('Vary','Origin');if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}}
+ if(pathname==='/api/capture-token'&&req.method==='GET'){res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({token:captureToken}));}
+ if(pathname.startsWith('/api/stage')){
+  res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');
+  const localOrigin=`http://127.0.0.1:${server.address().port}`;
+  const originOk=!req.headers.origin||req.headers.origin===localOrigin||externalOrigins.has(req.headers.origin);
+  if(req.headers['x-capture-token']!==captureToken||!originOk){res.writeHead(403);return res.end(JSON.stringify({error:'Origine non autorisée.'}));}
+  if(pathname==='/api/stage'&&req.method==='GET')return res.end(JSON.stringify({rows:[...stage.rows.values()],receivedIds:[...stage.conversations.keys()],wanted:[...stage.wanted]}));
+  if(req.method!=='POST'){res.writeHead(405);return res.end(JSON.stringify({error:'Méthode non autorisée.'}));}
+  let body;
+  try{let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>100*1024*1024)throw Error('Maximum 100 Mo.');chunks.push(chunk);}body=JSON.parse(Buffer.concat(chunks).toString()||'{}');}
+  catch(e){res.writeHead(400);return res.end(JSON.stringify({error:e.message}));}
+  try{
+   if(pathname==='/api/stage/rows'){
+    if(!Array.isArray(body.rows))throw Error('rows manquant.');
+    for(const r of body.rows){if(typeof r?.id!=='string')continue;if(stage.rows.size>=STAGE_MAX_ROWS)break;stage.rows.set(r.id,{id:r.id,title:String(r.title??r.id),source:r.source==='perplexity'?'perplexity':'chatgpt'});}
+    return res.end(JSON.stringify({rows:stage.rows.size}));
+   }
+   if(pathname==='/api/stage/conversations'){
+    if(!Array.isArray(body.conversations))throw Error('conversations manquant.');
+    for(const c of body.conversations){const id=c?.conversation_id||c?.id;if(typeof id!=='string')continue;stage.conversations.set(id,c);}
+    return res.end(JSON.stringify({received:stage.conversations.size}));
+   }
+   if(pathname==='/api/stage/wanted'){
+    if(!Array.isArray(body.ids))throw Error('ids manquant.');
+    stage.wanted=new Set(body.ids.filter(i=>typeof i==='string').slice(0,STAGE_MAX_ROWS));
+    return res.end(JSON.stringify({wanted:stage.wanted.size}));
+   }
+   if(pathname==='/api/stage/clear'){
+    stage.rows.clear();stage.conversations.clear();stage.wanted.clear();
+    return res.end(JSON.stringify({cleared:true}));
+   }
+   if(pathname==='/api/stage/import'){
+    const ids=Array.isArray(body.ids)?body.ids:[...stage.conversations.keys()];
+    const conversations=ids.map(i=>stage.conversations.get(i)).filter(Boolean);
+    if(!conversations.length)return res.end(JSON.stringify({imported:0,skipped:0,error:'Aucun texte reçu à importer.'}));
+    const prefs=await preferences.read();
+    const result=importCapture(prefs.destination,{conversations},{duplicates:prefs.duplicates});
+    for(const c of conversations)stage.conversations.delete(c.conversation_id||c.id);
+    stage.wanted.clear();archive=undefined;workspace=undefined;
+    return res.end(JSON.stringify({...result,afterImport:prefs.afterImport,destination:prefs.destination}));
+   }
+  }catch(e){res.writeHead(400);return res.end(JSON.stringify({error:e.message}));}
+  res.writeHead(404);return res.end(JSON.stringify({error:'Inconnu.'}));
+ }
+ if(pathname==='/api/preferences'){
  res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');
  if(req.method==='GET'){try{return res.end(JSON.stringify(await preferences.read()));}catch(e){res.writeHead(409);return res.end(JSON.stringify({error:e.message,defaults:preferences.defaults}));}}
  if(req.method!=='POST'){res.writeHead(405);return res.end();}

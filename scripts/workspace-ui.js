@@ -140,12 +140,27 @@ function render(){
    const groupRow=document.createElement('tr');groupRow.className='item group-header';
    const colSpan=1+columns.filter(([id])=>view.columns[id]).length;
    const checkTd=document.createElement('td');const groupCheck=document.createElement('input');groupCheck.type='checkbox';const groupKeys=entry.items.map(r=>r.key);const allSel=groupKeys.every(k=>selected.has(k));groupCheck.checked=allSel;groupCheck.indeterminate=!allSel&&groupKeys.some(k=>selected.has(k));groupCheck.onchange=()=>{groupKeys.forEach(k=>groupCheck.checked?selected.add(k):selected.delete(k));selectionCount();};checkTd.append(groupCheck);groupRow.append(checkTd);
-   const dateTd=document.createElement('td');dateTd.dataset.column='date';dateTd.hidden=!view.columns['date'];dateTd.className='date-cell';dateTd.textContent='×'+entry.items.length;groupRow.append(dateTd);
-   const llmTd=document.createElement('td');llmTd.dataset.column='llm';llmTd.hidden=!view.columns['llm'];groupRow.append(llmTd);
+   const dateTd=document.createElement('td');dateTd.dataset.column='date';dateTd.hidden=!view.columns['date'];dateTd.className='date-cell';
+   const stamps=entry.items.map(r=>new Date(r.updated)).filter(d=>!Number.isNaN(d.valueOf()));
+   if(stamps.length){
+    const latest=new Date(Math.max(...stamps.map(d=>d.valueOf())));
+    const vis=latest.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    const full=latest.toLocaleString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const stamp=document.createElement('span');stamp.className='date-tip';stamp.tabIndex=0;stamp.textContent=vis;stamp.dataset.tip=full;
+    stamp.title=stamps.length>1?'Plus récente des '+stamps.length+' · '+full:full;dateTd.append(stamp);
+   }else dateTd.textContent='—';
+   groupRow.append(dateTd);
+   const llmTd=document.createElement('td');llmTd.dataset.column='llm';llmTd.hidden=!view.columns['llm'];
+   const providers=[...new Set(entry.items.map(r=>r.provider).filter(Boolean))];
+   const llmBadge=document.createElement('span');llmBadge.className='vault-badge provider';
+   if(providers.length===1){llmBadge.dataset.provider=providers[0];llmBadge.textContent=providers[0];}
+   else if(providers.length>1){llmBadge.textContent=providers.length+' LLM';llmBadge.title=providers.join(', ');}
+   else llmBadge.textContent='—';
+   llmTd.append(llmBadge);groupRow.append(llmTd);
    const titleTd=document.createElement('td');titleTd.dataset.column='title';titleTd.className='title-cell';
+   const countBadge=document.createElement('span');countBadge.className='group-count';countBadge.textContent='×'+entry.items.length;countBadge.title=entry.items.length+' session(s)';titleTd.append(countBadge);
    const groupToggle=document.createElement('button');groupToggle.className='row-fold group-fold';groupToggle.textContent=isOpen?'▾':'▶';groupToggle.title=(isOpen?'Replier':'Déplier')+' ce groupe';groupToggle.onclick=()=>{isOpen?openGroups.delete(entry.title):openGroups.add(entry.title);render();};titleTd.append(groupToggle);
    const groupTitle=document.createElement('span');groupTitle.className='row-title group-title';appendMarked(groupTitle,entry.title);groupTitle.title=entry.title;titleTd.append(groupTitle);
-   const countBadge=document.createElement('span');countBadge.className='row-type';countBadge.textContent=entry.items.length+' sessions';titleTd.append(countBadge);
    groupRow.append(titleTd);
    const projTd=document.createElement('td');projTd.dataset.column='project';projTd.hidden=!view.columns['project'];groupRow.append(projTd);
    const statusTd=document.createElement('td');statusTd.dataset.column='status';groupRow.append(statusTd);

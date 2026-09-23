@@ -102,7 +102,9 @@ body.embedded #view-settings-open{display:none}
 .project-color-setting select{min-width:220px}
 .row-actions{white-space:nowrap;width:auto;opacity:0;padding:0 4px;transition:opacity .15s}
 tr.item:hover .row-actions{opacity:1}
-tr.group-header{background:#0f111a}tr.group-header:hover{background:#151722}tr.group-header .group-fold{color:var(--bone-1);font-size:11px}tr.group-header .group-title{color:var(--bone-1);font-weight:600}tr.group-child td:first-child{padding-left:20px}tr.group-child .title-cell{padding-left:16px;border-left:2px solid var(--ink-4)}
+tr.group-header{background:#0f111a}tr.group-header:hover{background:#151722}tr.group-header .group-fold{color:var(--bone-1);font-size:11px}tr.group-header .group-title{color:var(--bone-1);font-weight:600}
+/* Count sits before the fold arrow and stays visible whatever the view toggles hide. */
+tr.group-header .group-count{display:inline-block;font:11px ui-monospace,monospace;color:var(--bone-2);margin-right:6px}tr.group-child td:first-child{padding-left:20px}tr.group-child .title-cell{padding-left:16px;border-left:2px solid var(--ink-4)}
 .row-action{border:0;background:transparent;padding:4px 6px;cursor:pointer;font-size:14px;opacity:.7}
 .row-action:hover{opacity:1}
 .favorite-tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}

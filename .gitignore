@@ -1,6 +1,13 @@
 backups/
 *.bak
 *.backup
+
+# Local capture session secret — regenerated on first start, never shared.
+data/private/.capture-token
+# Local user data and machine-specific paths.
+data/private/preferences.json
+PromptVault/
+
 build/
 dist/
 .DS_Store

@@ -7,15 +7,25 @@ function getProvider() {
   return null;
 }
 
-function openPromptMistress(provider) {
-  const nonce = crypto.randomUUID();
-  const origin = encodeURIComponent(location.origin);
-  const url = `${PM_ORIGIN}/?capture=1&provider=${provider}&origin=${origin}#${nonce}`;
-  return { window: window.open(url, '_blank'), nonce };
+// chatgpt.com and perplexity.ai cannot share a browser window, so conversations are
+// handed to the service instead and every source meets in its staging area.
+//
+// The calls are relayed through the background service worker: a fetch issued from this
+// page would come from a public HTTPS origin aimed at a loopback address, which Chrome
+// blocks under Local Network Access before it even leaves the browser.
+let pmToken = '';
+
+async function pm(path, body) {
+  const reply = await chrome.runtime.sendMessage({action: 'pm-fetch', path, body, token: pmToken});
+  if (!reply) throw new Error('Extension PromptMistress non disponible');
+  if (!reply.ok) throw new Error(reply.error || 'PromptMistress injoignable');
+  return reply.data;
 }
 
-function send(w, type, payload, nonce) {
-  w.postMessage({ pm: 'bridge-v1', nonce, type, payload }, PM_ORIGIN);
+async function connectPM() {
+  const auth = await pm('/api/capture-token');
+  if (!auth || !auth.token) throw new Error('Jeton de capture indisponible');
+  pmToken = auth.token;
 }
 
 const delay = (ms = 450) => new Promise(r => setTimeout(r, ms));
@@ -194,80 +204,91 @@ async function capturePerplexity(ids, plus, sendMsg, stopRef) {
 
 // ---------- UI injection ----------
 function ensureButton() {
-  if (document.getElementById('pm-capture-fab')) return;
+  const existing = document.getElementById('pm-capture-fab');
+  if (existing) return existing;
   const btn = document.createElement('button');
   btn.id = 'pm-capture-fab';
   btn.title = 'Capturer dans PromptMistress';
   btn.textContent = 'PM';
-  btn.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:2147483647;width:48px;height:48px;border-radius:50%;border:1px solid #30323d;background:#17283e;color:#80bdff;font:700 13px system-ui;cursor:pointer;box-shadow:0 6px 24px #0006;transition:transform .15s;pointer-events:auto';
+  btn.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:2147483647;min-width:48px;height:48px;padding:0 14px;border-radius:24px;border:1px solid #30323d;background:#17283e;color:#80bdff;font:700 13px system-ui;cursor:pointer;box-shadow:0 6px 24px #0006;transition:transform .15s;pointer-events:auto';
   btn.addEventListener('mouseenter', () => btn.style.transform = 'scale(1.08)');
   btn.addEventListener('mouseleave', () => btn.style.transform = 'scale(1)');
   document.body.append(btn);
   return btn;
 }
 
-// ---------- Bridge ----------
+// ---------- Staging bridge ----------
 function run(provider) {
   const btn = ensureButton();
-  let cockpit = null;
-  let nonce = '';
-  let connected = false;
+  const known = new Set();
+  const sent = new Set();
+  let running = false;
   const stopRef = { stopped: false };
+  const label = t => { btn.textContent = t; };
 
-  function post(type, payload) {
-    if (cockpit && !cockpit.closed) send(cockpit, type, payload, nonce);
-  }
-
-  function reset() {
-    connected = false;
-    stopRef.stopped = true;
-    window.removeEventListener('message', receive);
-  }
-
-  async function receive(e) {
-    if (e.origin !== PM_ORIGIN || e.source !== cockpit || e.data?.pm !== 'bridge-v1' || e.data.nonce !== nonce) return;
-    const { type, payload } = e.data;
-    if (type === 'ready' && !connected) {
-      connected = true;
-      if (provider === 'chatgpt') await listChatGPT(post);
-      else await listPerplexity(post);
-    } else if (type === 'capture' && Array.isArray(payload?.ids)) {
-      const ids = [...new Set(payload.ids)].slice(0, 10000);
-      stopRef.stopped = false;
-      if (provider === 'chatgpt') await captureChatGPT(ids, payload.plus === true, post, stopRef);
-      else await capturePerplexity(ids, payload.plus === true, post, stopRef);
-    } else if (type === 'stop') {
-      stopRef.stopped = true;
+  // The API helpers report progress through this one callback, so routing them to the
+  // staging area is all that changes: titles and conversations go to the service,
+  // everything else is local feedback.
+  function report(type, payload) {
+    if (type === 'rows') {
+      for (const r of payload) known.add(r.id);
+      void pm('/api/stage/rows', { rows: payload }).catch(e => label('PM ⚠ ' + e.message));
+      label('PM ' + known.size);
+    } else if (type === 'conversation') {
+      sent.add(payload.id);
+      void pm('/api/stage/conversations', { conversations: [payload] }).catch(e => label('PM ⚠ ' + e.message));
+      label('PM ↑' + sent.size);
+    } else if (type === 'listed') {
+      label('PM ' + payload.count);
+    } else if (type === 'progress') {
+      label('PM …');
+    } else if (type === 'error' || type === 'capture-error') {
+      label('PM ⚠');
+      console.warn('[PromptMistress]', payload.message || payload);
     }
   }
 
-  function start() {
-    if (cockpit && !cockpit.closed) { cockpit.focus(); return; }
-    stopRef.stopped = false;
-    const opened = openPromptMistress(provider);
-    cockpit = opened.window;
-    nonce = opened.nonce;
-    if (!cockpit) { alert('Autorisez PromptMistress à ouvrir une fenêtre.'); return; }
-    window.addEventListener('message', receive);
-    const hello = setInterval(() => post('hello', {}), 400);
-    setTimeout(() => {
-      clearInterval(hello);
-      if (!connected) {
-        reset();
-        alert('Connexion à PromptMistress impossible. Vérifiez que l’application est ouverte.');
+  // Keep answering whatever the /capture screen asks for, for as long as this tab lives.
+  async function serve() {
+    while (!stopRef.stopped) {
+      try {
+        const state = await pm('/api/stage');
+        const todo = (state.wanted || []).filter(id => known.has(id) && !sent.has(id));
+        if (todo.length) {
+          if (provider === 'chatgpt') await captureChatGPT(todo, false, report, stopRef);
+          else await capturePerplexity(todo, false, report, stopRef);
+        }
+      } catch (e) {
+        label('PM ⚠');
+        console.warn('[PromptMistress]', e.message);
       }
-    }, 20000);
-    const closed = setInterval(() => {
-      if (cockpit.closed) { clearInterval(closed); clearInterval(hello); reset(); }
-    }, 2000);
+      await delay(1500);
+    }
+  }
+
+  async function start() {
+    if (running) { stopRef.stopped = true; label('PM'); running = false; return; }
+    running = true;
+    stopRef.stopped = false;
+    try {
+      await connectPM();
+    } catch (e) {
+      running = false;
+      alert('PromptMistress est injoignable sur ' + PM_ORIGIN + '.\nLancez l’application, puis réessayez.');
+      return;
+    }
+    label('PM …');
+    if (provider === 'chatgpt') await listChatGPT(report);
+    else await listPerplexity(report);
+    void serve();
   }
 
   btn.onclick = start;
+  btn.title = 'Capturer dans PromptMistress (recliquer pour arrêter)';
 
-  // Écoute les messages de la popup/background pour démarrer la capture.
   chrome.runtime?.onMessage?.addListener((msg, sender, respond) => {
-    if (msg.action === 'start-capture') { start(); respond({ ok: true }); return true; }
-    if (msg.action === 'get-state') { respond({ provider, opened: !!(cockpit && !cockpit.closed) }); return true; }
+    if (msg.action === 'start-capture') { void start(); respond({ ok: true }); return true; }
+    if (msg.action === 'get-state') { respond({ provider, running, listed: known.size, sent: sent.size }); return true; }
   });
 }
 

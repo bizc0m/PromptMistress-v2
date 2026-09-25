@@ -63,7 +63,7 @@ const STAGE_MAX_ROWS=20000;
 // The browser extension calls from its own origin, whose id varies per install. A web page
 // cannot forge such an origin, and the capture token is the actual authorisation, so these
 // are accepted on a valid token.
-const isExtensionOrigin=o=>/^(chrome|moz)-extension:\/\/[a-z0-9-]+$/.test(o||'');
+const isExtensionOrigin=o=>/^(chrome|moz)-extension:\/\/[a-z0-9]{32}$/.test(o||'');
 server=http.createServer(async(req,res)=>{const pathname=new URL(req.url,'http://localhost').pathname;
  const reqOrigin=req.headers.origin||'';
  if(externalOrigins.has(reqOrigin)&&(pathname==='/api/capture-token'||pathname==='/api/capture'||pathname==='/api/preferences'||pathname.startsWith('/api/stage'))){res.setHeader('Access-Control-Allow-Origin',reqOrigin);res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type,X-Capture-Token');res.setHeader('Vary','Origin');
@@ -85,8 +85,9 @@ server=http.createServer(async(req,res)=>{const pathname=new URL(req.url,'http:/
   try{
    if(pathname==='/api/stage/rows'){
     if(!Array.isArray(body.rows))throw Error('rows manquant.');
-    for(const r of body.rows){if(typeof r?.id!=='string')continue;if(stage.rows.size>=STAGE_MAX_ROWS)break;stage.rows.set(r.id,{id:r.id,title:String(r.title??r.id),source:r.source==='perplexity'?'perplexity':'chatgpt'});}
-    return res.end(JSON.stringify({rows:stage.rows.size}));
+    let added=0;
+    for(const r of body.rows){if(typeof r?.id!=='string')continue;if(stage.rows.size>=STAGE_MAX_ROWS){res.writeHead(413);return res.end(JSON.stringify({error:`Limite de ${STAGE_MAX_ROWS} conversations atteinte.`}));}stage.rows.set(r.id,{id:r.id,title:String(r.title??r.id),source:r.source==='perplexity'?'perplexity':'chatgpt'});added++;}
+    return res.end(JSON.stringify({rows:stage.rows.size,added}));
    }
    if(pathname==='/api/stage/conversations'){
     if(!Array.isArray(body.conversations))throw Error('conversations manquant.');

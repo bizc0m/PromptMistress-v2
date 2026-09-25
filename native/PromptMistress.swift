@@ -143,7 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) { let a=NSAlert(); a.messageText=message; a.runModal(); completionHandler() }
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) { let a=NSAlert(); a.messageText=message; a.addButton(withTitle:"OK"); a.addButton(withTitle:"Annuler"); completionHandler(a.runModal() == .alertFirstButtonReturn) }
     func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) { let a=NSAlert(); a.messageText=prompt; let field=NSTextField(frame:NSRect(x:0,y:0,width:300,height:24)); field.stringValue=defaultText ?? ""; a.accessoryView=field; a.addButton(withTitle:"OK"); a.addButton(withTitle:"Annuler"); completionHandler(a.runModal() == .alertFirstButtonReturn ? field.stringValue : nil) }
-    @objc func preferencesClicked() { web.evaluateJavaScript("document.getElementById('preferences-open')?.click()") }
+    @objc func preferencesClicked() { web.evaluateJavaScript("document.getElementById('preferences-open')?.click()") { _, e in if let e=e { print("Prefs click failed: \(e)") } } }
     @objc func importerClicked() { web.evaluateJavaScript("document.getElementById('capture-link')?.click() || select('capture')") }
     @objc func actualiserClicked() { web.reload() }
     @objc func toggleFullScreen() { window.toggleFullScreen(nil) }

@@ -16,7 +16,8 @@ function getProvider() {
 let pmToken = '';
 
 async function pm(path, body) {
-  const reply = await chrome.runtime.sendMessage({action: 'pm-fetch', path, body, token: pmToken});
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Extension timeout (5s)')), 5000));
+  const reply = await Promise.race([chrome.runtime.sendMessage({action: 'pm-fetch', path, body, token: pmToken}), timeout]);
   if (!reply) throw new Error('Extension PromptMistress non disponible');
   if (!reply.ok) throw new Error(reply.error || 'PromptMistress injoignable');
   return reply.data;

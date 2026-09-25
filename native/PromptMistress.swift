@@ -20,14 +20,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     var restartDelay = 2.0
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu(); let appItem = NSMenuItem(); menu.addItem(appItem)
-        let appMenu = NSMenu(); appMenu.addItem(withTitle: "Quitter PromptMistress", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"); appItem.submenu = appMenu
+        let appMenu = NSMenu(); appMenu.addItem(withTitle: "À propos de PromptMistress", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""); appMenu.addItem(NSMenuItem.separator()); appMenu.addItem(withTitle: "Préférences…", action: #selector(preferencesClicked), keyEquivalent: ","); appMenu.addItem(NSMenuItem.separator()); appMenu.addItem(withTitle: "Quitter PromptMistress", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"); appItem.submenu = appMenu
+        let fileItem = NSMenuItem(); menu.addItem(fileItem); let file = NSMenu(title: "Fichier"); file.addItem(withTitle: "Importer…", action: #selector(importerClicked), keyEquivalent: "i"); file.addItem(withTitle: "Actualiser", action: #selector(actualiserClicked), keyEquivalent: "r"); file.addItem(NSMenuItem.separator()); file.addItem(withTitle: "Fermer la fenêtre", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"); fileItem.submenu = file
         let editItem = NSMenuItem(); menu.addItem(editItem); let edit = NSMenu(title: "Édition"); editItem.submenu = edit
         for (title, action, key) in [("Annuler", "undo:", "z"), ("Couper", "cut:", "x"), ("Copier", "copy:", "c"), ("Coller", "paste:", "v"), ("Tout sélectionner", "selectAll:", "a")] { edit.addItem(withTitle: title, action: Selector(action), keyEquivalent: key) }
+        let viewItem = NSMenuItem(); menu.addItem(viewItem); let view = NSMenu(title: "Présentation"); let fullscreenItem = view.addItem(withTitle: "Activer le plein écran", action: #selector(toggleFullScreen), keyEquivalent: "f"); fullscreenItem.keyEquivalentModifierMask = [.command, .control]; viewItem.submenu = view
+        let windowItem = NSMenuItem(); menu.addItem(windowItem); let windowMenu = NSMenu(title: "Fenêtre"); windowMenu.addItem(withTitle: "Réduire", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m"); windowItem.submenu = windowMenu
+        let helpItem = NSMenuItem(); menu.addItem(helpItem); let help = NSMenu(title: "Aide"); help.addItem(withTitle: "Aide PromptMistress", action: nil, keyEquivalent: ""); helpItem.submenu = help
         NSApp.mainMenu = menu
         let config = WKWebViewConfiguration(); config.preferences.javaScriptCanOpenWindowsAutomatically = true
         web = WKWebView(frame: .zero, configuration: config); web.navigationDelegate = self; web.uiDelegate = self
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1440, height: 900), styleMask: [.titled,.closable,.miniaturizable,.resizable], backing: .buffered, defer: false)
-        window.title = "PromptMistress"; window.contentView = web; window.center(); window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        window.title = "PromptMistress"; window.contentMinSize = NSSize(width: 1000, height: 600); window.isRestorable = true; window.setFrameAutosaveName("PromptMistress-main"); window.contentView = web; window.center(); window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
         web.loadHTMLString("<body style='font:18px -apple-system;padding:60px;background:#f7f6f3'><h1>PromptMistress</h1><p>Démarrage des modules locaux…</p></body>", baseURL: nil)
         let process = Process(); server = process
         let resources = Bundle.main.resourceURL!
@@ -139,6 +143,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) { let a=NSAlert(); a.messageText=message; a.runModal(); completionHandler() }
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) { let a=NSAlert(); a.messageText=message; a.addButton(withTitle:"OK"); a.addButton(withTitle:"Annuler"); completionHandler(a.runModal() == .alertFirstButtonReturn) }
     func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) { let a=NSAlert(); a.messageText=prompt; let field=NSTextField(frame:NSRect(x:0,y:0,width:300,height:24)); field.stringValue=defaultText ?? ""; a.accessoryView=field; a.addButton(withTitle:"OK"); a.addButton(withTitle:"Annuler"); completionHandler(a.runModal() == .alertFirstButtonReturn ? field.stringValue : nil) }
+    @objc func preferencesClicked() { web.evaluateJavaScript("document.getElementById('preferences-open')?.click()") }
+    @objc func importerClicked() { web.evaluateJavaScript("document.getElementById('capture-link')?.click() || select('capture')") }
+    @objc func actualiserClicked() { web.reload() }
+    @objc func toggleFullScreen() { window.toggleFullScreen(nil) }
 }
 let app = NSApplication.shared
 let delegate = AppDelegate()

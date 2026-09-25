@@ -63,7 +63,7 @@ const STAGE_MAX_ROWS=20000;
 // The browser extension calls from its own origin, whose id varies per install. A web page
 // cannot forge such an origin, and the capture token is the actual authorisation, so these
 // are accepted on a valid token.
-const isExtensionOrigin=o=>/^(chrome|moz)-extension:\/\/[a-z0-9]{32}$/.test(o||'');
+const isExtensionOrigin=o=>/^(chrome|moz)-extension:\/\/([a-z0-9]{32}|[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12})$/.test(o||'');
 server=http.createServer(async(req,res)=>{const pathname=new URL(req.url,'http://localhost').pathname;
  const reqOrigin=req.headers.origin||'';
  if(externalOrigins.has(reqOrigin)&&(pathname==='/api/capture-token'||pathname==='/api/capture'||pathname==='/api/preferences'||pathname.startsWith('/api/stage'))){res.setHeader('Access-Control-Allow-Origin',reqOrigin);res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');res.setHeader('Access-Control-Allow-Headers','Content-Type,X-Capture-Token');res.setHeader('Vary','Origin');

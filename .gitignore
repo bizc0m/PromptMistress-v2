@@ -1,5 +1,6 @@
 backups/
 *.bak
+*.bak-*
 *.backup
 
 # Local capture session secret — regenerated on first start, never shared.

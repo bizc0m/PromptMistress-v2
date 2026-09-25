@@ -53,6 +53,7 @@ main{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:18
 @media(max-width:900px){.panel-split{grid-template-columns:1fr}}
 @media(max-width:550px){header{flex-wrap:wrap}.steps{flex-direction:column;align-items:flex-start}}
 #robot-capture{width:60px;height:80px;position:absolute;bottom:16px;right:18px;opacity:0.3;animation:pulse 2s ease-in-out infinite}@keyframes pulse{0%,100%{opacity:0.3;}50%{opacity:0.5}}
+@media(prefers-reduced-motion:reduce){#robot-capture{animation:none}}
 </style></head><body>
 <header><a class="back" href="/">← Retour bibliothèque</a><div><h1>Importer</h1><p class="muted">Capture depuis ChatGPT / Perplexity ou importe un export JSON.</p></div><p id="capture-mode">Chargement des préférences…</p></header>
 <main>

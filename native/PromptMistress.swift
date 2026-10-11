@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         process.arguments = ["scripts/server.mjs"]
         var env = ProcessInfo.processInfo.environment
         env["PROMPTMISTRESS_DATA"] = paths.data
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
         if let python = paths.python { env["PROMPTMISTRESS_PYTHON"] = python }
         process.environment = env
         input = Pipe(); process.standardInput = input!
@@ -103,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         process.arguments = ["scripts/server.mjs"]
         var env = ProcessInfo.processInfo.environment
         env["PROMPTMISTRESS_DATA"] = paths.data
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
         if let python = paths.python { env["PROMPTMISTRESS_PYTHON"] = python }
         process.environment = env
         input = Pipe()

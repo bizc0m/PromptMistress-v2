@@ -181,6 +181,10 @@ cat > "${APP_DIR}/Contents/Resources/Runtime.plist" <<EOF
 </plist>
 EOF
 
+# Purge des bytecodes Python avant signature : un .pyc écrit dans le bundle
+# invalide la signature scellée et fait rejeter l'app par Gatekeeper au lancement.
+find "${APP_DIR}/Contents/Resources" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
+
 # Signature
 log "Signature codesign — identity: $SIGN_IDENTITY"
 if [[ "$SIGN_IDENTITY" == "-" ]]; then

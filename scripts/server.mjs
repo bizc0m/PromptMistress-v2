@@ -78,6 +78,7 @@ server=http.createServer(async(req,res)=>{const pathname=new URL(req.url,'http:/
   const originOk=!req.headers.origin||req.headers.origin===localOrigin||externalOrigins.has(req.headers.origin)||isExtensionOrigin(req.headers.origin);
   if(req.headers['x-capture-token']!==captureToken||!originOk){res.writeHead(403);return res.end(JSON.stringify({error:'Origine non autorisée.'}));}
   if(pathname==='/api/stage'&&req.method==='GET')return res.end(JSON.stringify({rows:[...stage.rows.values()],receivedIds:[...stage.conversations.keys()],wanted:[...stage.wanted]}));
+  if(pathname==='/api/stage/progress'&&req.method==='GET'){const pending=[...stage.wanted].filter(id=>!stage.conversations.has(id));return res.end(JSON.stringify({total:stage.wanted.size,captured:stage.conversations.size,pending:pending.length}));}
   if(req.method!=='POST'){res.writeHead(405);return res.end(JSON.stringify({error:'Méthode non autorisée.'}));}
   let body;
   try{let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>100*1024*1024)throw Error('Maximum 100 Mo.');chunks.push(chunk);}body=JSON.parse(Buffer.concat(chunks).toString()||'{}');}

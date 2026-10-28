@@ -44,7 +44,8 @@ async function importStaged(ids,prefix=''){
   const r=await fetch('/api/stage/import',{method:'POST',headers:{'Content-Type':'application/json','X-Capture-Token':token},body:JSON.stringify({ids})});
   const d=await r.json();if(!r.ok)throw Error(d.error||'Service local indisponible');
   for(const id of ids)stagedIds.delete(id);
-  status(prefix+`${d.imported} importée(s), ${d.skipped} déjà présente(s). Aucun fichier source remplacé.`);
+  if(d.skipped>0)status(prefix+`${d.imported} importée(s), ${d.skipped} skippée(s) car déjà présentes.`);
+  else status(prefix+`${d.imported} importée(s).`);
   return true;
  }catch(e){status(prefix+'Import échoué : '+e.message+'. Les textes restent en attente côté service.');return false;}
  finally{importing=false;render();}
@@ -69,6 +70,17 @@ async function pollStage(){
  }catch{}
 }
 setInterval(pollStage,1500);void pollStage();
+async function pollProgress(){
+ if(!awaiting||!awaiting.size)return;
+ try{
+  await authReady;
+  const r=await fetch('/api/stage/progress',{headers:{'X-Capture-Token':token}});
+  if(!r.ok)return;
+  const {total,captured,pending}=await r.json();
+  if(total>0){const pct=Math.round(100*captured/total);status(`Capture en cours: ${captured}/${total} (${pct}%). ${pending} en attente.`);}
+ }catch{}
+}
+setInterval(pollProgress,1000);
 $('stop').onclick=()=>{captureRun++;captureQueue=[];if(batchTimer!==null){clearTimeout(batchTimer);batchTimer=null;busy=false;render();status('Capture en pause. Les textes reçus sont conservés.');}tell('stop');};
 window.addEventListener('message',e=>{
  if(e.data?.pm!=='bridge-v1')return;

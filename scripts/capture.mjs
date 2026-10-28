@@ -7,7 +7,17 @@ import pv from '../projects/project-a-chatvault/pv.js';
 export function importCapture(vault, payload, {duplicates='skip'}={}) {
  if(!['skip','version'].includes(duplicates))throw Error('Politique de doublons invalide.');
  const list=Array.isArray(payload)?payload:payload.conversations||[payload];
- if(!Array.isArray(list)||!list.length||list.length>10000)throw Error('Export ChatGPT vide ou invalide.');
+ if(!Array.isArray(list)||!list.length)throw Error('Export ChatGPT vide ou invalide.');
+ // Auto-split large batches (> 10K)
+ if(list.length>10000){
+  let imported=0,skipped=0;
+  for(let i=0;i<list.length;i+=10000){
+   const batch=list.slice(i,i+10000);
+   const result=importCapture(vault,batch,{duplicates});
+   imported+=result.imported;skipped+=result.skipped;
+  }
+  return {imported,skipped};
+ }
  // Validate the whole input before writing any conversation.
  for(const c of list){if(c?.source==='perplexity'){normalizePerplexity(c);continue;}if(!c||typeof(c.conversation_id||c.id)!=='string'||!c.mapping||typeof c.mapping!=='object'||Array.isArray(c.mapping))throw Error('Conversation sans identifiant ou structure de messages.');}
  const attachmentPlans=new Map(list.filter(c=>c.pmAttachments!==undefined).map(c=>[c,prepareAttachments(c.pmAttachments)]));

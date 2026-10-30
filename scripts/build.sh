@@ -170,9 +170,9 @@ cat > "${APP_DIR}/Contents/Resources/Runtime.plist" <<EOF
 <plist version="1.0">
 <dict>
   <key>node</key>
-  <string>${APP_DIR}/Contents/Resources/bin/node</string>
+  <string>${INSTALL_DIR}/${APP_BUNDLE}/Contents/Resources/bin/node</string>
   <key>python</key>
-  <string>${PY_DIR}/bin/python3</string>
+  <string>${INSTALL_DIR}/${APP_BUNDLE}/Contents/Resources/Python3/bin/python3</string>
   <key>data</key>
   <string>${INSTALL_DIR}/archives</string>
   <key>log</key>
@@ -202,26 +202,8 @@ fi
 log "Installation dans ${INSTALL_DIR}"
 rm -rf "${INSTALL_DIR}/${APP_BUNDLE}"
 cp -R "$APP_DIR" "${INSTALL_DIR}/${APP_BUNDLE}"
-
-# Régénérer Runtime.plist avec les chemins d'installation
-INSTALLED_APP="${INSTALL_DIR}/${APP_BUNDLE}"
-INSTALLED_PY="${INSTALLED_APP}/Contents/Resources/Python3/bin/python3"
-cat > "${INSTALLED_APP}/Contents/Resources/Runtime.plist" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>node</key>
-  <string>${INSTALLED_APP}/Contents/Resources/bin/node</string>
-  <key>python</key>
-  <string>${INSTALLED_PY}</string>
-  <key>data</key>
-  <string>${INSTALL_DIR}/archives</string>
-  <key>log</key>
-  <string>${INSTALL_DIR}/logs/PromptMistress.log</string>
-</dict>
-</plist>
-EOF
+# Runtime.plist contient déjà les chemins d'installation (écrit avant signature) :
+# le réécrire ici invaliderait la signature scellée de l'app installée.
 
 # .zip
 ZIP_PATH="${DIST_DIR}/${APP_NAME}-${VERSION}-macOS.zip"

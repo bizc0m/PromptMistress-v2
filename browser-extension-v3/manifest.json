@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "PromptMistress V3 Capturer",
+  "version": "0.2.0",
+  "description": "Capture les conversations visibles de tout site LLM et les historiques ChatGPT/Perplexity via messagerie native, sans serveur local.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://www.perplexity.ai/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://www.perplexity.ai/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxmQzMvqyPjKPS+lxxDxcg4ze9coBC3ANvYNkO3lqLHYAX0uVlJm0ZYgZ3wT11ZH1pTq2y4eZoXTYw/wA+qVnZkfnP1JJW+BUxqQqzd0c36TU2mb6ptnISxZxa1ZxefjHWkzQ0nZzvmi1a20gID/wtQt/ovAIJzNCEaHNe6nOKg8hEoZZ7Hl2nHc3OVbG4FE/2NkBo+UeZPclbMkbPN9B6qEGWyAnH/+LpRe9DBZjyobPEjKVYKyLSCVYgqROgEJ4zCn2o+7SQrTVl40P2j9UCT966u6nhwtQRCk/7StsMqgYLJMpDwYwalLjHMro5dKzgX37XaT3cWDRlOUfUn37DQIDAQAB"
+}

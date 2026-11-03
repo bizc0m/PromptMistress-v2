@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {checkImportSources} from '../native-v3/check-import-sources.mjs';
+
+const home=fs.mkdtempSync(path.join(os.tmpdir(),'pm-import-health-'));
+try{
+  const data=path.join(home,'.promptmistress-v2/archives');
+  fs.mkdirSync(data,{recursive:true});
+  let report=checkImportSources({home,data});
+  assert.equal(report.ready,0);
+  assert.equal(report.total,5);
+  for(const folder of ['.codex/sessions','.claude/projects','.gemini'])fs.mkdirSync(path.join(home,folder),{recursive:true});
+  const base=path.join(home,'Library/Application Support/Comet');
+  fs.mkdirSync(path.join(base,'NativeMessagingHosts'),{recursive:true});
+  fs.mkdirSync(path.join(base,'Default'),{recursive:true});
+  const host=path.join(home,'capture-host');fs.writeFileSync(host,'host');
+  const id='iklpeopdgonmdeldkncapehpmjfobhke';
+  fs.writeFileSync(path.join(base,'NativeMessagingHosts/com.bizc0m.promptmistress.v3.json'),JSON.stringify({name:'com.bizc0m.promptmistress.v3',path:host,allowed_origins:[`chrome-extension://${id}/`]}));
+  const extensionPath=path.join(home,'browser-extension-v3');fs.mkdirSync(extensionPath);
+  fs.writeFileSync(path.join(base,'Default/Secure Preferences'),JSON.stringify({extensions:{settings:{[id]:{path:extensionPath,location:4,disable_reasons:[]}}}}));
+  report=checkImportSources({home,data});
+  assert.equal(report.ready,3);
+  assert.equal(report.browsers[0].ready,true);
+  assert.equal(report.sources.find(item=>item.name==='ChatGPT').state,'pending');
+  const now=new Date('2026-11-02T12:00:00Z');
+  fs.writeFileSync(path.join(data,'import-browser-v3.json'),JSON.stringify({chatgpt:{state:'running',checkedAt:'2026-11-02T11:55:00Z'}}));
+  report=checkImportSources({home,data,now});
+  assert.equal(report.sources.find(item=>item.name==='ChatGPT').state,'running');
+  fs.writeFileSync(path.join(data,'import-browser-v3.json'),JSON.stringify({chatgpt:{state:'complete',checkedAt:'2026-11-02T11:00:00Z',listed:42},perplexity:{state:'error',checkedAt:'2026-11-02T11:00:00Z',message:'Session absente'}}));
+  report=checkImportSources({home,data,now});
+  assert.equal(report.ready,4);
+  assert.equal(report.sources.find(item=>item.name==='Perplexity').state,'error');
+  assert.equal(report.sources.find(item=>item.name==='ChatGPT').detail.includes('42 conversations'),true);
+  fs.writeFileSync(path.join(data,'preferences.json'),JSON.stringify({autoImport:false}));
+  report=checkImportSources({home,data,now});
+  assert.equal(report.sources.find(item=>item.name==='ChatGPT').state,'disabled');
+  console.log('Diagnostic de lancement V3 : cinq sources, pont Comet, session et préférence validés.');
+}finally{fs.rmSync(home,{recursive:true,force:true});}

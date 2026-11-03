@@ -1,0 +1,9 @@
+/* Keep the collapsed rail in the grid so the table occupies its intended column. */
+body.rail-collapsed .rail {
+  display: block !important;
+  visibility: hidden !important;
+  padding: 0 !important;
+  border: 0 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}

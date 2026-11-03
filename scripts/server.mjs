@@ -48,9 +48,28 @@ let closing=false;
 let server;
 process.on("uncaughtException", error=>{console.error(error.message);for(const child of children)child.kill();process.exit(1)});
 function stop(){if(closing)return;closing=true;for(const child of children)child.kill('SIGTERM');if(server)server.close(()=>process.exit(0));else process.exit(0);setTimeout(()=>process.exit(0),2000).unref();}
-let nextPort=Number(process.env.PROMPTMISTRESS_MODULE_PORT||18432);
-async function port(){return new Promise((resolve,reject)=>{const s=net.createServer();s.on('error',reject);s.listen(nextPort++,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>resolve(p))})})}
-async function launch(name,command,args,env={}){const p=await port();const child=spawn(command,args(p),{cwd:root,env:{...process.env,...env},stdio:['ignore','pipe','pipe']});children.push(child);child.stdout.on('data',()=>{});child.stderr.on('data',b=>process.stderr.write(`[${name}] ${b}`));let failed=false;child.on('error',()=>failed=true);child.on('exit',()=>failed=true);const url=`http://127.0.0.1:${p}/`;for(let n=0;n<60&&!failed;n++){try{const r=await fetch(url);if(r.ok)return {url,child};}catch{}await new Promise(r=>setTimeout(r,100));}return {url:null,child};}
+// Internal modules use ephemeral ports; only the extension-facing API stays on 18431.
+async function port(){return new Promise((resolve,reject)=>{const s=net.createServer();s.once('error',reject);s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>resolve(p))})})}
+async function launch(name,command,args,env={}){
+ for(let attempt=0;attempt<5;attempt++){
+  const p=await port();
+  const child=spawn(command,args(p),{cwd:root,env:{...process.env,...env},stdio:['ignore','pipe','pipe']});
+  children.push(child);
+  child.stdout.on('data',()=>{});
+  child.stderr.on('data',b=>process.stderr.write(`[${name}] ${b}`));
+  let failed=false;
+  child.on('error',()=>failed=true);
+  child.on('exit',()=>failed=true);
+  const url=`http://127.0.0.1:${p}/`;
+  for(let n=0;n<60&&!failed;n++){
+   try{const r=await fetch(url);if(r.ok&&!failed)return {url,child};}catch{}
+   await new Promise(r=>setTimeout(r,100));
+  }
+  if(!failed)child.kill('SIGTERM');
+  await new Promise(resolve=>{if(child.exitCode!==null||child.signalCode!==null)return resolve();child.once('exit',resolve);setTimeout(resolve,1000).unref();});
+ }
+ return {url:null,child:null};
+}
 const node=await launch('vault',process.execPath,p=>['projects/project-a-chatvault/pv.js','ui','--port',String(p),'--vault',vaultSource('Prompt Vault Node')]);
 let pythonBin=process.env.PROMPTMISTRESS_PYTHON;if(!pythonBin){const candidates=[path.join(root,'..','..','Frameworks','Python3.framework','Versions','3.9','bin','python3'),path.join(root,'..','..','Frameworks','Python3.framework','Versions','3.13','bin','python3'),'python3','python'];for(const candidate of candidates){try{execSync(`command -v ${candidate}`,{shell:true,stdio:'ignore'});pythonBin=candidate;break;}catch{}}if(!pythonBin)pythonBin='python3';}
 const python=await launch('python',pythonBin,p=>['-c','import sys; from pathlib import Path; from prompt_vault.ui.server import serve; serve(Path(sys.argv[1]), "127.0.0.1", int(sys.argv[2]))',vaultSource('Prompt Vault Python'),String(p)],{PYTHONPATH:path.join(root,'projects/project-b-python-prompt-vault/src')});
@@ -132,7 +151,7 @@ if(pathname==='/api/capture'&&req.method==='POST'){res.setHeader('Content-Type',
  const result=pathname==='/api/workspace'?{rows:workspace.rows,summary:workspace.summary,generation:workspace.generation}:workspace.detail(q.get('key'),Number(q.get('variant')||0));
  if(!result)res.writeHead(404);return res.end(JSON.stringify(result||{}));
  }catch(e){res.writeHead(503);return res.end(JSON.stringify({error:e.message}));}}
-if(pathname==='/api/refresh-import'){res.setHeader('Content-Type','application/json');if(global.runImport){global.runImport();return res.end(JSON.stringify({status:'import lancé'}));}else return res.end(JSON.stringify({error:'import non disponible'}));}if(pathname==='/api/exporter'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');try{const payload=(await getArchive()).exporterData;if(!payload)throw Error('Source Codex Exporter indisponible ; les autres modules restent accessibles.');return res.end(JSON.stringify(payload));}catch(e){res.writeHead(503);return res.end(JSON.stringify({error:e.message}));}}if(pathname.startsWith('/api/archive')){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');try{if(pathname==='/api/archive'&&new URL(req.url,'http://localhost').searchParams.get('refresh')==='1')archive=undefined;const a=await getArchive();if(pathname==='/api/archive')return res.end(JSON.stringify({summary:a.summary,rows:a.rows}));if(pathname==='/api/archive/detail'){const query=new URL(req.url,'http://localhost').searchParams;const d=a.detail(query.get('key'),Number(query.get('variant')||0));if(d)return res.end(JSON.stringify(d));}res.writeHead(404);return res.end('{}');}catch(e){res.writeHead(503);return res.end(JSON.stringify({error:e.message}));}}if(pathname==='/health'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify({app:'PromptMistress',ready:!!node.url&&!!python.url&&node.child.exitCode===null&&python.child.exitCode===null,node:node.url||'/unavailable',python:python.url||'/unavailable'}));}if(pathname==='/unavailable'){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end('<p>Ce moteur n’a pas démarré. Consultez le journal local de PromptMistress.</p>');}const file=files[pathname];if(!file){res.writeHead(404);return res.end('Not found');}res.setHeader('Content-Type',file[1]);let content=fs.readFileSync(path.join(root,file[0]));if(pathname==='/exporter')content=content.toString().replace('</head>','<link rel="stylesheet" href="/styles/exporter-embed.css"></head>').replace('</body>','<script src="/scripts/exporter-connect.js"></script></body>');res.end(content);});
+if(pathname==='/api/refresh-import'){res.setHeader('Content-Type','application/json');if(global.runImport){global.runImport();return res.end(JSON.stringify({status:'import lancé'}));}else return res.end(JSON.stringify({error:'import non disponible'}));}if(pathname==='/api/exporter'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');try{const payload=(await getArchive()).exporterData;if(!payload)throw Error('Source Codex Exporter indisponible ; les autres modules restent accessibles.');return res.end(JSON.stringify(payload));}catch(e){res.writeHead(503);return res.end(JSON.stringify({error:e.message}));}}if(pathname.startsWith('/api/archive')){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');try{if(pathname==='/api/archive'&&new URL(req.url,'http://localhost').searchParams.get('refresh')==='1')archive=undefined;const a=await getArchive();if(pathname==='/api/archive')return res.end(JSON.stringify({summary:a.summary,rows:a.rows}));if(pathname==='/api/archive/detail'){const query=new URL(req.url,'http://localhost').searchParams;const d=a.detail(query.get('key'),Number(query.get('variant')||0));if(d)return res.end(JSON.stringify(d));}res.writeHead(404);return res.end('{}');}catch(e){res.writeHead(503);return res.end(JSON.stringify({error:e.message}));}}if(pathname==='/health'){res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');return res.end(JSON.stringify({app:'PromptMistress',ready:!!node.url&&!!python.url&&node.child?.exitCode===null&&python.child?.exitCode===null,node:node.url||'/unavailable',python:python.url||'/unavailable'}));}if(pathname==='/unavailable'){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end('<p>Ce moteur n’a pas démarré. Consultez le journal local de PromptMistress.</p>');}const file=files[pathname];if(!file){res.writeHead(404);return res.end('Not found');}res.setHeader('Content-Type',file[1]);let content=fs.readFileSync(path.join(root,file[0]));if(pathname==='/exporter')content=content.toString().replace('</head>','<link rel="stylesheet" href="/styles/exporter-embed.css"></head>').replace('</body>','<script src="/scripts/exporter-connect.js"></script></body>');res.end(content);});
 server.on('error',e=>{console.error(e.message);for(const child of children)child.kill();process.exit(1)});
 server.listen(Number(process.env.PORT||18431),'127.0.0.1',()=>console.log(`READY http://127.0.0.1:${server.address().port}/`));
 if(process.env.PROMPTMISTRESS_NO_AUTOIMPORT!=='1'){
@@ -154,4 +173,10 @@ if(process.env.PROMPTMISTRESS_NO_AUTOIMPORT!=='1'){
  global.runImport=runImport;
 }
 process.on('SIGTERM',stop);process.on('SIGINT',stop);
+const parentPID=Number(process.env.PROMPTMISTRESS_PARENT_PID);
+if(Number.isInteger(parentPID)&&parentPID>1){
+ setInterval(()=>{
+  if(process.ppid!==parentPID){console.error('Application fermée ; arrêt du service local.');stop();}
+ },1000).unref();
+}
 if(process.stdin.isTTY){process.stdin.resume();process.stdin.on('end',stop);}

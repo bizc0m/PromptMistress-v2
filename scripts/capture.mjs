@@ -19,12 +19,21 @@ export function importCapture(vault, payload, {duplicates='skip'}={}) {
   return {imported,skipped};
  }
  // Validate the whole input before writing any conversation.
- for(const c of list){if(c?.source==='perplexity'){normalizePerplexity(c);continue;}if(!c||typeof(c.conversation_id||c.id)!=='string'||!c.mapping||typeof c.mapping!=='object'||Array.isArray(c.mapping))throw Error('Conversation sans identifiant ou structure de messages.');}
+ for(const c of list){
+  if(c?.source==='perplexity'){normalizePerplexity(c);continue;}
+  if(/^web-[a-z0-9-]{1,64}$/.test(c?.source||'')){
+   if(typeof(c.id||c.conversation_id)!=='string'||!Array.isArray(c.messages)||!c.messages.length||c.messages.length>1000||
+      !c.messages.every(m=>['user','assistant','system'].includes(m?.role)&&typeof m.content==='string'&&m.content.length<=250000)||
+      !/^(?:https?|file):\/\//.test(c.url||c.source_url||''))throw Error('Capture web invalide.');
+   continue;
+  }
+  if(!c||typeof(c.conversation_id||c.id)!=='string'||!c.mapping||typeof c.mapping!=='object'||Array.isArray(c.mapping))throw Error('Conversation sans identifiant ou structure de messages.');
+ }
  const attachmentPlans=new Map(list.filter(c=>c.pmAttachments!==undefined).map(c=>[c,prepareAttachments(c.pmAttachments)]));
  const index=JSON.parse(fs.readFileSync(path.join(vault,'index.json'),'utf8'));
  const seen=new Set();
  for(const row of index.items||index){
-  if(!['chatgpt','perplexity'].includes(row.source))continue;
+  if(!['chatgpt','perplexity'].includes(row.source)&&!/^web-[a-z0-9-]{1,64}$/.test(row.source||''))continue;
   if(row.source_id){seen.add(row.source+':'+row.source_id);continue;}
   // Fallback for index entries built before source_id was indexed: read the file once.
   const file=path.resolve(vault,row.path);if(!file.startsWith(path.resolve(vault)+path.sep))throw Error('Chemin hors vault');
@@ -33,6 +42,27 @@ export function importCapture(vault, payload, {duplicates='skip'}={}) {
  }
  let imported=0,skipped=0;
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'promptmistress-capture-'));
- try{for(const c of list){const id=c.conversation_id||c.id;const source=c.source==='perplexity'?'perplexity':'chatgpt',key=source+':'+id;if(seen.has(key)&&duplicates==='skip'){if(attachmentPlans.has(c))saveAttachments(vault,source,id,attachmentPlans.get(c));skipped++;continue;}const clean={...c};delete clean.pmAttachments;const file=path.join(tmp,'conversation.json');fs.writeFileSync(file,JSON.stringify(source==='perplexity'?normalizePerplexity(clean):{...clean,url:`https://chatgpt.com/c/${encodeURIComponent(id)}`}),{mode:0o600});if(source==='perplexity')pv.importSourceFile(vault,source,file);else pv.importChatGptFile(vault,file);if(attachmentPlans.has(c))saveAttachments(vault,source,id,attachmentPlans.get(c));seen.add(key);imported++;}if(imported)pv.rebuildIndex(vault);}finally{fs.rmSync(tmp,{recursive:true,force:true});}
+ try {
+  for(const c of list){
+   const id=c.conversation_id||c.id;
+   const source=c.source==='perplexity'?'perplexity':/^web-[a-z0-9-]{1,64}$/.test(c.source||'')?c.source:'chatgpt';
+   const key=source+':'+id;
+   if(seen.has(key)&&duplicates==='skip'){
+    if(attachmentPlans.has(c))saveAttachments(vault,source,id,attachmentPlans.get(c));
+    skipped++;
+    continue;
+   }
+   const clean={...c};delete clean.pmAttachments;
+   const payload=source==='perplexity'?normalizePerplexity(clean):
+    source==='chatgpt'?{...clean,url:`https://chatgpt.com/c/${encodeURIComponent(id)}`}:clean;
+   const file=path.join(tmp,'conversation.json');
+   fs.writeFileSync(file,JSON.stringify(payload),{mode:0o600});
+   if(source==='chatgpt')pv.importChatGptFile(vault,file);
+   else pv.importSourceFile(vault,source,file);
+   if(attachmentPlans.has(c))saveAttachments(vault,source,id,attachmentPlans.get(c));
+   seen.add(key);imported++;
+  }
+  if(imported)pv.rebuildIndex(vault);
+ } finally {fs.rmSync(tmp,{recursive:true,force:true});}
  return {imported,skipped};
 }

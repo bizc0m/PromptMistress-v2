@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+const temp=fs.mkdtempSync(path.join(os.tmpdir(),'promptmistress-file-v3-'));
+const bundle='dist/PromptMistress-V3-preview.app/Contents/Resources';
+const node=path.resolve(bundle,'bin/node');
+const importer=path.resolve(bundle,'app/native-v3/import-file.mjs');
+const vault=path.join(temp,'vault'),data=path.join(temp,'data');
+fs.mkdirSync(vault);fs.mkdirSync(data);
+try{
+ execFileSync(node,[path.resolve(bundle,'app/projects/project-a-chatvault/pv.js'),'rebuild-index','--vault',vault]);
+ const run=(file,selected)=>JSON.parse(execFileSync(node,[importer,file],{encoding:'utf8',env:{...process.env,PROMPTMISTRESS_DATA:data,PROMPTMISTRESS_VAULT:vault,...(selected?{PROMPTMISTRESS_SELECTED_INDICES:JSON.stringify(selected)}:{})}}));
+ const markdown=path.join(temp,'transcript.md');
+ fs.writeFileSync(markdown,'# Exemple\n\n## Messages\n\n### 1. user\n\nBonjour depuis un fichier.\n\n### 2. assistant\n\nBonjour, réponse locale.\n');
+ assert.equal(run(markdown).imported,1);
+ assert.equal(run(markdown).skipped,1);
+ const generic=path.join(temp,'claude.json');
+ fs.writeFileSync(generic,JSON.stringify({source:'claude',title:'Export Claude',messages:[{role:'human',content:'Une question.'},{role:'assistant',content:'Une réponse.'}]}));
+ assert.equal(run(generic).imported,1);
+ const chatgpt=path.join(temp,'chatgpt.json');
+ fs.writeFileSync(chatgpt,JSON.stringify({conversations:[{conversation_id:'gpt-file-1',title:'Export ChatGPT',mapping:{a:{message:{author:{role:'user'},content:{parts:['Question depuis un export.']}}}}}]}));
+ assert.equal(run(chatgpt).imported,1);
+ const batch=path.join(temp,'selection.json');
+ fs.writeFileSync(batch,JSON.stringify([{title:'Premier',messages:[{role:'user',content:'Un'}]},{title:'Second',messages:[{role:'user',content:'Deux'}]}]));
+ assert.equal(run(batch,[1]).imported,1);
+ assert.equal(run(batch,[1]).skipped,1);
+ assert.equal(run(batch,[0]).imported,1);
+ const rows=JSON.parse(fs.readFileSync(path.join(vault,'index.json'))).items;
+ assert.deepEqual(new Set(rows.map(row=>row.source)),new Set(['web-file','web-claude','chatgpt']));
+ console.log('Import fichier V3 : Markdown, JSON générique et export ChatGPT validés.');
+}finally{fs.rmSync(temp,{recursive:true,force:true});}

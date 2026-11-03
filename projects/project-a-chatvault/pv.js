@@ -696,6 +696,10 @@ function sourceExtractor(source) {
   if (source === "codex") return extractCodexMessages;
   if (source === "claude") return extractClaudeMessages;
   if (source === "gemini") return extractGeminiMessages;
+  if (/^web-[a-z0-9-]{1,64}$/.test(source)) return (raw) => {
+    const value = JSON.parse(raw);
+    return { ...extractGenericJsonConversation(value), title: value.title || "" };
+  };
   if (source === "perplexity") return (raw, file) => {
     if (file && file.endsWith(".json")) { const value = JSON.parse(raw); return { ...extractGenericJsonConversation(value), title: value.title || "" }; }
     return extractMarkdownConversation(raw, file ? path.basename(file, path.extname(file)) : "");

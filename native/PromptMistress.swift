@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     var restartCount = 0
     var maxRestarts = 3
     var restartDelay = 2.0
+    var isTerminating = false
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu(); let appItem = NSMenuItem(); menu.addItem(appItem)
         let appMenu = NSMenu(); appMenu.addItem(withTitle: "À propos de PromptMistress", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""); appMenu.addItem(NSMenuItem.separator()); appMenu.addItem(withTitle: "Préférences…", action: #selector(preferencesClicked), keyEquivalent: ","); appMenu.addItem(NSMenuItem.separator()); appMenu.addItem(withTitle: "Quitter PromptMistress", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"); appItem.submenu = appMenu
@@ -41,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         process.arguments = ["scripts/server.mjs"]
         var env = ProcessInfo.processInfo.environment
         env["PROMPTMISTRESS_DATA"] = paths.data
+        env["PROMPTMISTRESS_PARENT_PID"] = String(ProcessInfo.processInfo.processIdentifier)
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         if let python = paths.python { env["PROMPTMISTRESS_PYTHON"] = python }
         process.environment = env
@@ -61,13 +63,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         startServer(process)
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
-    func applicationWillTerminate(_ notification: Notification) { output?.fileHandleForReading.readabilityHandler = nil; try? input?.fileHandleForWriting.close(); if server?.isRunning == true { server?.terminate() } }
+    func applicationWillTerminate(_ notification: Notification) { isTerminating = true; output?.fileHandleForReading.readabilityHandler = nil; try? input?.fileHandleForWriting.close(); if server?.isRunning == true { server?.terminate() } }
 
     func startServer(_ process: Process) {
         do { try process.run() } catch { web.loadHTMLString("<h1>Démarrage impossible</h1><p>Le moteur Node configuré sur ce Mac est indisponible.</p>", baseURL: nil) }
     }
 
     func handleServerCrash() {
+        guard !isTerminating else { return }
         if restartCount < maxRestarts {
             restartCount += 1
             web.loadHTMLString("<h1>Redémarrage du service…</h1><p>Tentative \(restartCount)/\(maxRestarts)</p>", baseURL: nil)
@@ -95,6 +98,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     }
 
     func restartServer() {
+        guard !isTerminating else { return }
+        buffer = ""
         let process = Process()
         server = process
         let resources = Bundle.main.resourceURL!
@@ -104,6 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         process.arguments = ["scripts/server.mjs"]
         var env = ProcessInfo.processInfo.environment
         env["PROMPTMISTRESS_DATA"] = paths.data
+        env["PROMPTMISTRESS_PARENT_PID"] = String(ProcessInfo.processInfo.processIdentifier)
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         if let python = paths.python { env["PROMPTMISTRESS_PYTHON"] = python }
         process.environment = env
@@ -120,7 +126,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
                 guard let self = self else { return }
                 self.buffer += text
                 if let line = self.buffer.split(separator: "\n").first(where: {$0.hasPrefix("READY ")}), let url = URL(string: String(line.dropFirst(6))) {
-                    self.restartCount = 0
                     self.output?.fileHandleForReading.readabilityHandler = nil
                     self.web.load(URLRequest(url: url))
                 }

@@ -6,10 +6,12 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/server.mjs",
-    "test": "node scripts/verify.mjs && node scripts/test-extension.mjs",
+    "test": "node scripts/test-startup.mjs && node scripts/verify.mjs && node scripts/test-extension.mjs",
     "test:extension": "node scripts/test-extension.mjs",
     "test:extension:real": "node scripts/test-extension-real.mjs",
-    "build": "./scripts/build.sh"
+    "build": "./scripts/build.sh",
+    "test:startup": "node scripts/test-startup.mjs",
+    "test:native-v3": "node scripts/test-native-v3.mjs && node scripts/test-native-host.mjs && node scripts/test-extension-v3.mjs && node scripts/test-auto-history-v3.mjs && node scripts/test-comet-perplexity-v3.mjs && node scripts/test-import-health-v3.mjs && node scripts/test-snapshot-v3.mjs && node scripts/test-import-local-v3.mjs && bash scripts/test-v3-features.sh && ./native-v3/build-preview.sh && node scripts/test-import-file-v3.mjs && node scripts/test-import-stage-v3.mjs && node scripts/test-browser-auto-v3.mjs && node scripts/test-chatdomina-v3.mjs"
   },
   "devDependencies": {
     "jsdom": "^30.0.1",

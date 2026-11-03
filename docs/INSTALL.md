@@ -72,6 +72,15 @@ Pour publier une release signée, configurez les secrets GitHub :
 - `SIGN_IDENTITY`
 - `AC_API_KEY_ID`, `AC_API_KEY_ISSUER_ID`, `AC_API_KEY_PATH` (contenu du .p8)
 
+## Lancement de l’application installée
+
+```bash
+./launch.sh
+```
+
+Le lanceur ouvre l’app installée dans `~/.promptmistress-v2/PromptMistress.app`.
+L’app démarre elle-même le service local. Ne lancez pas `npm start` en parallèle.
+
 ## Lancement en mode développement (sans build app)
 
 ```bash
@@ -109,7 +118,7 @@ node scripts/verify.mjs
 ## Dépannage
 
 - **Module Python indisponible** : vérifiez que `~/.promptmistress-v2/PromptMistress.app/Contents/Resources/Python3/bin/python3` existe et s'exécute.
-- **Port déjà utilisé** : fermez l'app ou modifiez `PORT` / `PROMPTMISTRESS_MODULE_PORT`.
+- **Port 18431 déjà utilisé** : fermez l’autre instance de PromptMistress. Les ports des moteurs internes sont attribués automatiquement.
 - **Erreur Gatekeeper** : `xattr -dr com.apple.quarantine /Applications/PromptMistress.app`.
 
 ## Données

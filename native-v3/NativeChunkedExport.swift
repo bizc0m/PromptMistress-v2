@@ -418,7 +418,8 @@ enum NativeChunkedExport {
         }
 
         func write(_ data: Data) throws {
-            try handle.write(contentsOf: data)
+            do {try handle.write(contentsOf: data)}
+            catch {throw Failure.verification("écriture interrompue : \(error.localizedDescription)")}
             hasher.update(data: data)
             bytes += data.count
         }

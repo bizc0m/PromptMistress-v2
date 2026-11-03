@@ -1990,7 +1990,7 @@ final class V3App: NSObject, NSApplicationDelegate, NSTableViewDataSource, NSTab
         let inView=visible.reduce(0){$0+(checkedKeys.contains(ArchiveCore.string($1["key"])) ? 1 : 0)}
         let outside=checkedKeys.count-inView
         checkSummary.stringValue=checkedKeys.isEmpty ? "0 coché" : outside == 0 ? "\(inView) coché(s) dans cette vue" : "\(checkedKeys.count) cochés · \(inView) dans cette vue · \(outside) hors filtre"
-        bulkExportButton.title=checkedKeys.isEmpty ? "Export groupé…" : "Exporter \(checkedKeys.count) coché(s)…"
+        bulkExportButton.title=activeExport != nil ? "Annuler l’export" : checkedKeys.isEmpty ? "Export groupé…" : "Exporter \(checkedKeys.count) coché(s)…"
     }
     @objc private func exportBulk(){beginExport(preferTableSelection:false)}
     @objc private func exportSelection(){beginExport(preferTableSelection:true)}
@@ -2066,6 +2066,7 @@ final class V3App: NSObject, NSApplicationDelegate, NSTableViewDataSource, NSTab
     }
 
     @objc private func exportIndex(){
+        if let token=activeExport {token.cancel();status.stringValue="Annulation de l’export…";return}
         guard let workspace else{return}
         let keys=checkedKeys.isEmpty ? (selectedKeys.isEmpty ? visible.map{ArchiveCore.string($0["key"])} : selectedKeys) : workspace.rows.compactMap{let key=ArchiveCore.string($0["key"]);return checkedKeys.contains(key) ? key : nil}
         guard !keys.isEmpty else{status.stringValue="Aucune entrée à indexer.";return}

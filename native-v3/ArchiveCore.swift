@@ -27,11 +27,11 @@ struct NativeArchive {
     let details: [String: [ArchiveRecord]]
     let exporterData: [String: Any]?
 
-    func detail(key: String, variant: Int) throws -> [String: Any]? {
+    func detail(key: String, variant: Int, knownTitle: String? = nil) throws -> [String: Any]? {
         guard let records = details[key], records.indices.contains(variant) else { return nil }
         let record = records[variant]
         let text = try record.inlineText ?? String(contentsOfFile: record.path, encoding: .utf8)
-        return ["title": rows.first(where: { $0["key"] as? String == key })?["title"] ?? record.title,
+        return ["title": knownTitle ?? (rows.first(where: { $0["key"] as? String == key })?["title"] as? String) ?? record.title,
                 "source": record.source, "path": record.path,
                 "sourceURL": record.sourceURL, "text": text]
     }

@@ -246,6 +246,12 @@ precondition(indexReport.written == 2)
 let indexText=try String(contentsOf:indexTarget,encoding:.utf8)
 precondition(indexText == "# Index PromptMistress\n\n- A\n  - Projet : x\n- B")
 let cancelToken=NativeChunkedExport.CancelToken()
+let failedSink=try NativeChunkedExport.FileSink(chunkDir.appendingPathComponent("closed-sink"))
+failedSink.close()
+do {
+    try failedSink.write(Data("cannot write".utf8))
+    preconditionFailure("une erreur d’écriture doit interrompre l’export")
+} catch NativeChunkedExport.Failure.verification {}
 cancelToken.cancel()
 precondition(cancelToken.isCancelled)
 _ = workspace

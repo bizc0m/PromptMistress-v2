@@ -180,7 +180,7 @@ struct NativeWorkspace {
                 if !forceFull,let cached=existingCache?.chats[key],cached.stamp == stamp,!stamp.isEmpty {
                     workspace.contentSizes[key]=NativeContentSize(bytes:cached.bytes,lines:cached.lines)
                     chatSizeCacheHits += 1
-                } else if let value=try? archive.detail(key:key,variant:0),let text=value["text"] as? String {
+                } else if let value=try? archive.detail(key:key,variant:0,knownTitle:ArchiveCore.string(row["title"])),let text=value["text"] as? String {
                     workspace.contentSizes[key]=NativeContentSize(text)
                 }
                 if let size=workspace.contentSizes[key],!stamp.isEmpty {nextCache.chats[key]=ChatSizeEntry(stamp:stamp,bytes:size.bytes,lines:size.lines)}
@@ -212,7 +212,7 @@ struct NativeWorkspace {
                       "sourceURL": (row["variants"] as? [[String: Any]])?.first?["sourceURL"] ?? "",
                       "text": text, "raw": raw, "messages": [["role": "user", "content": text]]]
         } else {
-            guard var chat = try archive.detail(key: key, variant: variant) else { return nil }
+            guard var chat = try archive.detail(key: key, variant: variant, knownTitle:ArchiveCore.string(row["title"])) else { return nil }
             let text = ArchiveCore.string(chat["text"])
             chat["raw"] = text
             chat["messages"] = Self.markdownMessages(text)
